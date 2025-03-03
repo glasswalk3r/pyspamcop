@@ -1,0 +1,16 @@
+---
+execution_options:
+  all_reports: true
+  automatic_confirmation: true
+  dry_run: false
+  verbosity: INFO
+  database:
+    enabled: true
+    path: /var/spamcop/reports.db
+accounts:
+  Provider1:
+    email: account@provider1.com
+    password: FOOBAR
+  Provider2:
+    email: account@provider2.com
+    password: FOOBAR
