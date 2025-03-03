@@ -47,6 +47,13 @@ class InvalidCfgDirectiveError(BaseExceptionError):
         super().__init__(f"The directive '{directive}' is invalid, check documentation")
 
 
+class MissingAccountCfgPropertyError(BaseExceptionError):
+    """Exception when there is a missing account configuration option."""
+
+    def __init__(self, option: str, provider: str):
+        super().__init__(f"The option {option} is missing in the '{provider}' provider block")
+
+
 def _validate_directives(data: dict) -> None:
     expected = set(["execution_options", "accounts"])
 
@@ -55,8 +62,6 @@ def _validate_directives(data: dict) -> None:
             raise InvalidCfgDirectiveError(first_level_key)
 
     expected = set(["all_reports", "automatic_confirmation", "dry_run", "verbosity", "database"])
-
-    print(data["execution_options"])
 
     for exec_opt in data["execution_options"]:
         if exec_opt not in expected:
@@ -85,7 +90,7 @@ def read_config(config_file: str) -> Configuration:
                 ),
             )
         except KeyError as e:
-            raise InvalidCfgDirectiveError(str(e)) from e
+            raise MissingAccountCfgPropertyError(option=str(e), provider=provider) from e
 
     if (
         data.get("database", False)
