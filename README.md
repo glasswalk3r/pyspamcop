@@ -1,6 +1,7 @@
 # pyspamcop
 
-Web crawler for finishing SpamCop.net reports automatically
+Web crawler for finishing [SpamCop.net](https://spamcop.net) reports
+automatically.
 
 ## Description
 
@@ -17,74 +18,50 @@ available are only those exposed by Spamcop itself, there is no correlation of
 the statistics Spamcop have and save for themselves.
 
 pyspamcop is a rewrite from the
-[App-SpamcupNG](https://github.com/glasswalk3r/App-SpamcupNG) project.
+[pyspamcop](https://github.com/glasswalk3r/pyspamcop) project.
 
 ## Introduction
 
-In your favorite shell:
+1. Create a configuration file
+1. In your favorite shell:
 
 ```
-  $ spamcop
+  spamcop
 ```
 
 That's it! See the configuration file details.
 
-You can also provide all the parameters in the command line.
+You can also provide some of the parameters in the command line.
 
 Usage:
 
 ```
-  $ spamcop -h
-  spamcop <options> <SpamCop-Username>
-
-  Options:
-    -n Does nothing, just shows if you have unreported spam or not.
-    -a Run in a loop untill all spam is reported.
-    -s Stupid. Runs without asking confirmation. Use with care.
-    -c Alternate method for signifying code. (Unpaid users WITHOUT username & password)
-    -l Alternate method for providing username. (Paid & unpaid users with password)
-    -p Method for providing password. (Required for users with password)
-    -v Shows version and quit.
-    -V Verbosity mode. Running "perldoc App::SpamcupNG" will provide more information on that.
-    -h You are reading it.
+  pyspamcop --help
 ```
 
 ## Warnings
 
-Some important warnings before starting using it:
+Some important warnings before starting using `pyspamcop`:
 
-- The script does **not** know where the SPAM report will be sent so **it's
+- The program does **not** know where the SPAM report will be sent so **it's
 your responsibility**!
-- If the script asks Spamcop to send reports to wrong places **it's your
+- If the program asks Spamcop to send reports to wrong places **it's your
 fault**!
-- If the script has a bug that causes same report being sent thousand times
+- If the program has a bug that causes same report being sent thousand times
 **it's your mail addresses**!
 
 ## Setup
 
-App-SpamcupNG is distributed as a regular Perl distribution, so you can do it
-from [CPAN](http://search.cpan.org) by downloading it with your preferred CPAN
-client or directly, by downloading the tarball (and doing the traditional
-`perl Makefile.PL; make; make test; make install`).
-
-Additionally, App-SpamcupNG ships with a `cpanfile`, which can allow you to
-install directly from Github. See
-[here](http://blogs.perl.org/users/mark_allen/2013/07/why-i-use-cpanfile-and-you-should-too.html)
-for more details on that.
-
-You will need administrator rights to install this globally unless you're lucky
-to be on a UNIX-like OS and you install your own Perl interpreter (like those
-installed by [perlbrew](https://perlbrew.pl/)).
-
-[local::lib](https://metacpan.org/pod/local::lib) is also your friend to avoid
-the need of administrative rights.
+pyspamcop is distributed as a regular Python module, so you can install from
+[pypi.org](https://pypi.org) repository with `pip` or any other program that
+you use to install Python modules.
 
 ### Configuration file
 
 You can also provide a configuration file to avoid having to provide the same
 information everytime you want to execute the program.
 
-The program will look for a configuration file name `.spamcop.yml` in the
+The program will look for a configuration file name `.spamcop.yaml` in the
 corresponding home directory of the user (that will dependend on the OS you're
 executing it). Pay attention to the dot ('.') in front of the file.
 
@@ -93,22 +70,20 @@ properties below:
 
 ```YAML
 ---
-ExecutionOptions:
-  all: y
-  stupid: y
-  check_only: n
-  alt_code: n
-  alt_user: n
+execution_options:
+  all_reports: true
+  automatic_confirmation: true
+  dry_run: false
   verbosity: INFO
   database:
     enabled: true
     path: /var/spamcop/reports.db
-Accounts:
-  Yahoo!:
-    e-mail: account@provider1.com.br
+accounts:
+  Provider1:
+    email: account@provider1.com
     password: FOOBAR
-  Gmail:
-    e-mail: account@provider2.com.br
+  Provider2:
+    email: account@provider2.com
     password: FOOBAR
 ```
 All those options have their corresponding command line parameter. Be sure to
