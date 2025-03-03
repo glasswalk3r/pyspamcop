@@ -3,6 +3,7 @@
 from importlib.metadata import version
 from ruamel.yaml import YAML
 from dataclasses import dataclass
+from pyspamcop.exception import BaseExceptionError
 
 
 def my_version():
@@ -32,14 +33,14 @@ class Configuration:
         return False
 
 
-class MissingAccountCfgError(Exception):
+class MissingAccountCfgError(BaseExceptionError):
     """Exception when there is no account configuration available."""
 
     def __init__(self, config_file: str):
         super().__init__(f"There is no configuration available in the {config_file} configuration file")
 
 
-class InvalidCfgDirectiveError(Exception):
+class InvalidCfgDirectiveError(BaseExceptionError):
     """Exception when an invalid configuration directive is used."""
 
     def __init__(self, directive: str):
