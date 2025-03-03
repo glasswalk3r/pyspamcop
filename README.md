@@ -1,6 +1,6 @@
 # pyspamcop
 
-Web crawler for finishing [SpamCop.net](https://spamcop.net) reports
+Web crawler for finishing [SpamCop.net](https://www.spamcop.net) reports
 automatically.
 
 ## Description
@@ -18,7 +18,7 @@ available are only those exposed by Spamcop itself, there is no correlation of
 the statistics Spamcop have and save for themselves.
 
 pyspamcop is a rewrite from the
-[pyspamcop](https://github.com/glasswalk3r/pyspamcop) project.
+[pyspamcop](https://github.com/glasswalk3r/App-SpamcupNG) project.
 
 ## Introduction
 
