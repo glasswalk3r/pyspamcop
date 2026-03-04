@@ -1,6 +1,5 @@
 """Implementation of the SpamCop client with HTTP."""
 
-from dataclasses import dataclass
 from pyspamcop.spamcop.client import ClientBase
 import httpx
 from pyspamcop.exception import BaseExceptionError
@@ -20,15 +19,14 @@ class InvalidPasswordError(BaseExceptionError):
         super().__init__("The provided password in invalid")
 
 
-@dataclass(slots=True)
 class HTTPClient(ClientBase):
-    code_login_param: str = "code"
-    report_param: str = "id"
-    report_path: str = "sc"
-    domain: str = "www.spamcop.net"
-    form_login_path: str = "mcgi"
-
-    def __post_init__(self) -> None:
+    def __init__(self) -> None:
+        super().__init__()
+        self.code_login_param: str = "code"
+        self.report_param: str = "id"
+        self.report_path: str = "sc"
+        self.domain: str = "www.spamcop.net"
+        self.form_login_path: str = "mcgi"
         self.__client: httpx.Client = httpx.Client(headers={"user-agent": self.user_agent()}, follow_redirects=True)
         self.__cookies: dict[str, str] | None = None
 
@@ -67,10 +65,14 @@ class HTTPClient(ClientBase):
         """Overwrite from base class."""
         return self.__cookies is not None
 
-    def spam_report(self, report_id: str) -> str:
+    def spam_report(self, report_id: str):
         """Overwrite from base class."""
         pass
 
     def confirm_report(self) -> str:
         """Overwrite from base class."""
+        pass
+
+    def last_response(self) -> str:
+        """Return the response data from the last interaction with SpamCop."""
         pass

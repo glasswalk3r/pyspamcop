@@ -1,7 +1,6 @@
 """Base classes for interaction with SpamCop."""
 
-from dataclasses import dataclass
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from pyspamcop.exception import BaseExceptionError
 
 
@@ -16,10 +15,10 @@ class LoginFailedError(BaseExceptionError):
         self.details = details
 
 
-@dataclass()
-class ClientBase:
-    name: str = "pyspamcop version"
-    version: str = "0.1.0"
+class ClientBase(ABC):
+    def __init__(self) -> None:
+        self.name: str = "pyspamcop version"
+        self.version: str = "0.1.0"
 
     @abstractmethod
     def login(self, email: str, password: str) -> str:
@@ -45,5 +44,5 @@ class ClientBase:
 
     @abstractmethod
     def last_response(self) -> str:
-        """Return the response data from the last interfaction with SpamCop."""
+        """Return the response data from the last interaction with SpamCop."""
         pass
