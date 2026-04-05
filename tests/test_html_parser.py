@@ -4,7 +4,7 @@ import pytest
 
 from bs4 import BeautifulSoup
 
-from pyspamcop.html import find_errors, find_message_age, MessageAge
+from pyspamcop.html import find_errors, find_message_age, MessageAge, find_warnings
 
 
 def read_fixture(filename):
@@ -51,3 +51,14 @@ def test_find_message_age_not_found():
     html_empty = "<html><body>No info here</body></html>"
     result = find_message_age(BeautifulSoup(html_empty, "html.parser"))
     assert result is None
+
+
+def test_find_warnings_success():
+    result = find_warnings(read_fixture("sendreport_form_ok.html"))
+    assert len(result) == 2
+    assert result[0].messages == (
+        "Possible forgery. Supposed receiving system not associated with any of your mailhosts",
+        "Will not trust this Received line.",
+    )
+
+    assert result[1].messages == ("Yum, this spam is fresh!",)

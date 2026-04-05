@@ -1,12 +1,11 @@
 """HTML parsing."""
 
-import logging
 import re
 from abc import ABC, abstractmethod, abstractclassmethod
 from dataclasses import dataclass
 
 from bs4 import BeautifulSoup
-from bs4.element import NavigableString
+from bs4.element import NavigableString, Tag
 from typing import Final
 
 
@@ -38,7 +37,7 @@ class Message(ABC):
         pass
 
     @abstractclassmethod
-    def html_extract(cls, element: NavigableString) -> "Message":
+    def html_extract(cls, element: Tag) -> "Message":
         """Com um pouco de sorte, somente o div será necessário"""
         pass
 
@@ -46,8 +45,8 @@ class Message(ABC):
         return f"{self.__class__.__name__}:{self.messages}"
 
 
-class ErrorMessage(Message):
-    """A message that represents an irrecoverable error.
+class UnrecoverableSpamReportMessage(Message):
+    """A message that represents an irrecoverable error for the SPAM report.
 
     This means irrecoverable for the SPAM report being attempted. The only logic is to ignore it and move to the next
     pending report available for completion.
@@ -56,16 +55,13 @@ class ErrorMessage(Message):
     pass
 
 
-class MailHostMessage(ErrorMessage):
-    def __init__(self, messages: list[str]) -> None:
-        super().__init__(messages)
-
+class MailHostMessage(UnrecoverableSpamReportMessage):
     @classmethod
     def is_related(cls, message: str) -> bool:
         return MAIL_HOST_REGEX.match(message)
 
     @classmethod
-    def html_extract(cls, element: NavigableString) -> "Message":
+    def html_extract(cls, element: Tag) -> "Message":
         messages = [element.get_text()]
         current = element.next_sibling
 
@@ -82,49 +78,81 @@ class MailHostMessage(ErrorMessage):
         return f"{self.messages[0]}. {self.messages[-1]}"
 
 
-class SpamHeaderMessage(ErrorMessage):
-    def __init__(self, messages: list[str]) -> None:
-        super().__init__(messages)
-
+class SpamHeaderMessage(UnrecoverableSpamReportMessage):
     @classmethod
     def is_related(cls, message: str) -> bool:
         return message.startswith("Failed to load spam header")
 
     @classmethod
-    def html_extract(cls, element: NavigableString) -> "Message":
+    def html_extract(cls, element: Tag) -> "Message":
         return SpamHeaderMessage([element.get_text()])
 
     def complete_message(self) -> str:
         return self.messages[0]
 
 
-def _messages_in(soup: BeautifulSoup, css_class: str, errors_types: list[ErrorMessage]) -> list[str]:
-    logger = logging.getLogger(__name__)
-    content = [tag for tag in soup.find_all(name="div", id="content")]
+class WarningMessage(Message):
+    """Messages that are only warnings, but SPAM report can be completed."""
 
-    if len(content) > 1:
-        logger.warning("The HTML page should have only content div, but I got %d instead", len(content))
-        logger.warning("Only the first result will be used")
-
-    errors = []
-
-    for tag in content[0].find_all(name="div", class_=css_class):
-        message = tag.get_text()
-
-        for error in errors_types:
-            if error.is_related(message):
-                errors.append(error.html_extract(tag))
-                break
-
-    return errors
+    pass
 
 
-def _errors_in_content(soup: BeautifulSoup) -> list[str]:
-    return _messages_in(soup=soup, css_class="error", errors_types=[MailHostMessage, SpamHeaderMessage])
+class MailhostForgeryMessage(WarningMessage):
+    @classmethod
+    def is_related(cls, message: str) -> bool:
+        return message.startswith("Possible forgery")
+
+    @classmethod
+    def html_extract(cls, element: Tag) -> "Message":
+        messages = [element.get_text()]
+        current = element.next_sibling
+
+        while current and len(messages) < 2:
+            if isinstance(current, NavigableString):
+                text = current.strip()
+
+                if text != "":
+                    messages.append(text)
+
+            current = current.next_sibling
+
+        return MailhostForgeryMessage(messages)
+
+    def complete_message(self) -> str:
+        return ". ".join(self.messages)
 
 
-def _warnings_in_content(soup: BeautifulSoup) -> list[str]:
-    return _messages_in(soup=soup, css_class="warning")
+class FreshSpamMessage(WarningMessage):
+    @classmethod
+    def is_related(cls, message: str) -> bool:
+        return message.startswith("Yum")
+
+    @classmethod
+    def html_extract(cls, element: Tag) -> "Message":
+        return FreshSpamMessage([element.get_text()])
+
+    def complete_message(self) -> str:
+        return self.messages[0]
+
+
+def _messages_in(soup: BeautifulSoup, css_class: str, msg_types: list[Message]) -> list[str]:
+    all_content = [tag for tag in soup.find_all(name="div", id="content")]
+    messages = []
+
+    for content in all_content:
+        for tag in content.find_all(name="div", class_=css_class):
+            message = tag.get_text()
+
+            for error in msg_types:
+                if error.is_related(message):
+                    messages.append(error.html_extract(tag))
+                    break
+
+    return messages
+
+
+def _errors_in_response(soup: BeautifulSoup) -> list[str]:
+    return _messages_in(soup=soup, css_class="error", msg_types=[MailHostMessage, SpamHeaderMessage])
 
 
 def _errors_in_form(soup: BeautifulSoup) -> list[str]:
@@ -133,7 +161,7 @@ def _errors_in_form(soup: BeautifulSoup) -> list[str]:
 
 def find_errors(soup: BeautifulSoup) -> list[str]:
     """Tries to find all errors on the HTML, based on CSS classes."""
-    errors = _errors_in_content(soup)
+    errors = _errors_in_response(soup)
     errors.extend(_errors_in_form(soup))
     return errors
 
@@ -145,10 +173,13 @@ class MessageAge:
 
 
 def find_message_age(soup: BeautifulSoup) -> MessageAge | None:
-    """Extract the spam age and time unit from the HTML content."""
     match = SPAM_AGE_REGEX.search(soup.get_text())
 
     if match:
         return MessageAge(int(match.group(1)), match.group(2).rstrip("s"))
 
     return None
+
+
+def find_warnings(soup: BeautifulSoup) -> list[str]:
+    return _messages_in(soup=soup, css_class="warning", msg_types=[MailhostForgeryMessage, FreshSpamMessage])
