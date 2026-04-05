@@ -2,7 +2,15 @@ import os
 
 import pytest
 
+from bs4 import BeautifulSoup
+
 from pyspamcop.html import find_errors, find_message_age, MessageAge
+
+
+def read_fixture(filename):
+    path = os.path.join("tests", "fixtures", filename)
+    with open(path, "r", encoding="utf-8") as fp:
+        return BeautifulSoup(fp.read(), "html.parser")
 
 
 @pytest.mark.parametrize(
@@ -25,22 +33,11 @@ from pyspamcop.html import find_errors, find_message_age, MessageAge
     ),
 )
 def test_find_errors(filename, messages, formatted):
-    with open(os.path.join("tests", "fixtures", filename), "r") as fp:
-        result = find_errors(fp.read())
-
+    result = find_errors(read_fixture(filename))
     assert isinstance(result, list)
     assert len(result) == 1
     assert result[0].messages == messages
     assert result[0].complete_message() == formatted
-
-
-def read_fixture(filename):
-    """Helper para carregar o HTML da fixture."""
-    import os
-
-    path = os.path.join("tests", "fixtures", filename)
-    with open(path, "r", encoding="utf-8") as fp:
-        return fp.read()
 
 
 def test_find_message_age_ok():
@@ -52,5 +49,5 @@ def test_find_message_age_ok():
 
 def test_find_message_age_not_found():
     html_empty = "<html><body>No info here</body></html>"
-    result = find_message_age(html_empty)
+    result = find_message_age(BeautifulSoup(html_empty, "html.parser"))
     assert result is None

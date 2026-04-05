@@ -131,12 +131,8 @@ def _errors_in_form(soup: BeautifulSoup) -> list[str]:
     return []
 
 
-def find_errors(html_doc: str) -> list[str]:
+def find_errors(soup: BeautifulSoup) -> list[str]:
     """Tries to find all errors on the HTML, based on CSS classes."""
-    logger = logging.getLogger(__name__)
-    logger.debug("All HTML content: %s", html_doc)
-
-    soup = BeautifulSoup(html_doc, "html.parser")
     errors = _errors_in_content(soup)
     errors.extend(_errors_in_form(soup))
     return errors
@@ -148,12 +144,8 @@ class MessageAge:
     unit: str
 
 
-def find_message_age(html_doc: str) -> MessageAge | None:
+def find_message_age(soup: BeautifulSoup) -> MessageAge | None:
     """Extract the spam age and time unit from the HTML content."""
-    logger = logging.getLogger(__name__)
-    logger.debug("All HTML content: %s", html_doc)
-
-    soup = BeautifulSoup(html_doc, "html.parser")
     match = SPAM_AGE_REGEX.search(soup.get_text())
 
     if match:
