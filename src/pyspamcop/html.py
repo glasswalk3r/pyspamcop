@@ -3,6 +3,7 @@
 import logging
 import re
 from abc import ABC, abstractmethod, abstractclassmethod
+from dataclasses import dataclass
 
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString
@@ -14,6 +15,7 @@ BOUNCE_REGEX: Final = re.compile(r"bounce")
 LOGIN_FAILED_REGEX: Final = re.compile(r"^Login\sfailed")
 MAIL_TOO_OLD_REGEX: Final = re.compile(r"email\sis\stoo\sold")
 NOTHING_REGEX: Final = re.compile(r"^Nothing")
+SPAM_AGE_REGEX: Final = re.compile(r"^Message\sis\s(\d+)\s(\w+)\sold", re.MULTILINE)
 
 
 class Message(ABC):
@@ -45,7 +47,11 @@ class Message(ABC):
 
 
 class ErrorMessage(Message):
-    """A message that represents an irrecoverable error."""
+    """A message that represents an irrecoverable error.
+
+    This means irrecoverable for the SPAM report being attempted. The only logic is to ignore it and move to the next
+    pending report available for completion.
+    """
 
     pass
 
@@ -134,3 +140,23 @@ def find_errors(html_doc: str) -> list[str]:
     errors = _errors_in_content(soup)
     errors.extend(_errors_in_form(soup))
     return errors
+
+
+@dataclass(slots=True)
+class MessageAge:
+    amount: int
+    unit: str
+
+
+def find_message_age(html_doc: str) -> MessageAge | None:
+    """Extract the spam age and time unit from the HTML content."""
+    logger = logging.getLogger(__name__)
+    logger.debug("All HTML content: %s", html_doc)
+
+    soup = BeautifulSoup(html_doc, "html.parser")
+    match = SPAM_AGE_REGEX.search(soup.get_text())
+
+    if match:
+        return MessageAge(int(match.group(1)), match.group(2).rstrip("s"))
+
+    return None
