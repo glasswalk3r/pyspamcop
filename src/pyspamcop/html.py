@@ -1,8 +1,10 @@
 """HTML parsing."""
 
+import logging
 import re
 from abc import ABC, abstractmethod, abstractclassmethod
 from dataclasses import dataclass
+from urllib.parse import urlparse, parse_qs
 
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
@@ -236,3 +238,33 @@ def find_message_age(soup: BeautifulSoup) -> MessageAge | None:
 
 def find_warnings(soup: BeautifulSoup) -> list[str]:
     return _messages_in(soup=soup, css_class="warning", msg_types=[MailhostForgeryMessage, FreshSpamMessage])
+
+
+def find_next_id(soup: BeautifulSoup) -> str | None:
+    """Finds the next SPAM ID to be reported."""
+    logger = logging.getLogger(__name__)
+
+    for anchor in soup.select("strong > a"):
+        link_text = anchor.get_text(strip=True).replace("\n", " ")
+
+        if link_text == "Report Now":
+            href = anchor.get("href")
+
+            if href is None:
+                continue
+
+            parsed_url = urlparse(href)
+            query_params = parse_qs(parsed_url.query)
+            ids = query_params.get("id")
+
+            if ids is not None:
+                next_id = ids[0]
+                length = len(next_id)
+                expected = 45
+
+                if length != expected:
+                    logger.warning("Unexpected length for SPAM ID: got %d, expected %d", length, expected)
+
+                return next_id
+
+    return None

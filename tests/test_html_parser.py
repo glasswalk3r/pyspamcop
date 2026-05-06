@@ -4,7 +4,7 @@ import pytest
 
 from bs4 import BeautifulSoup
 
-from pyspamcop.html import find_errors, find_message_age, MessageAge, find_warnings
+from pyspamcop.html import find_errors, find_message_age, MessageAge, find_warnings, find_next_id
 
 
 def read_fixture(filename):
@@ -71,3 +71,17 @@ def test_find_warnings_success():
     )
 
     assert result[1].messages == ("Yum, this spam is fresh!",)
+
+
+@pytest.mark.parametrize(
+    "expected_id, filename",
+    (("z6444645586z5cebd61f7e0464abe28f045afff01b9dz", "after_login.html"), (None, "failed_load_header.html")),
+)
+def test_find_next_id(expected_id, filename):
+    result = find_next_id(read_fixture(filename))
+
+    if expected_id is None:
+        assert result is None
+        return
+
+    assert result == expected_id
