@@ -9,9 +9,6 @@ from bs4.element import NavigableString, Tag
 from typing import Final
 
 
-MAIL_HOST_REGEX: Final = re.compile(r"Mailhost\sconfiguration\sproblem")  # TODO: might be replaced by startwith
-BOUNCE_REGEX: Final = re.compile(r"bounce")
-LOGIN_FAILED_REGEX: Final = re.compile(r"^Login\sfailed")
 MAIL_TOO_OLD_REGEX: Final = re.compile(r"email\sis\stoo\sold")
 NOTHING_REGEX: Final = re.compile(r"^Nothing")
 SPAM_AGE_REGEX: Final = re.compile(r"^Message\sis\s(\d+)\s(\w+)\sold", re.MULTILINE)
@@ -58,7 +55,7 @@ class UnrecoverableSpamReportMessage(Message):
 class MailHostMessage(UnrecoverableSpamReportMessage):
     @classmethod
     def is_related(cls, message: str) -> bool:
-        return MAIL_HOST_REGEX.match(message)
+        return message.startswith("Mailhost configuration problem")
 
     @classmethod
     def html_extract(cls, element: Tag) -> "Message":
