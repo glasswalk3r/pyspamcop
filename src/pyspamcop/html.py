@@ -290,18 +290,18 @@ def find_header_info(soup: BeautifulSoup) -> dict[str, str | None]:
         A dictionary with keys 'mailer', 'content_type', and 'charset'.
     """
     info: dict[str, str | None] = {"mailer": None, "content_type": None, "charset": None}
-
     content_div = soup.find("div", id="content")
-    if not content_div:
+
+    if content_div is None:
         return info
 
-    # Matches XPath /html/body/div[@id="content"]/pre
     pre_nodes = content_div.find_all("pre", recursive=False)
 
     for node in pre_nodes:
         for line in node.get_text().splitlines():
             line = line.strip()
-            if not line:
+
+            if line == "":
                 continue
 
             if line.startswith("X-Mailer:"):
@@ -314,8 +314,8 @@ def find_header_info(soup: BeautifulSoup) -> dict[str, str | None]:
                 if len(parts) > 1:
                     encoding = parts[0].lower().strip()
                     charset_part = parts[1].lower().strip().replace('"', "")
-
                     info["content_type"] = encoding
+
                     if charset_part.startswith("boundary"):
                         info["charset"] = None
                     elif "=" in charset_part:
@@ -327,7 +327,7 @@ def find_header_info(soup: BeautifulSoup) -> dict[str, str | None]:
                     info["content_type"] = value
 
             # Break early if both primary fields are found
-            if info["mailer"] and info["content_type"]:
+            if info["mailer"] is not None and info["content_type"] is not None:
                 return info
 
     return info
