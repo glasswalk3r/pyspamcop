@@ -11,7 +11,7 @@ class LoginFailedError(BaseExceptionError):
     """
 
     def __init__(self, details: str) -> None:
-        super().__init__(f"Your login attempt to SpamCop failed: {details}")
+        super().__init__(f"Your login attempt to Spamcop failed: {details}")
         self.details = details
 
 
