@@ -52,13 +52,13 @@ lint:
 	ruff format
 
 unit:
-	python -m pytest -m 'not integration'
+	@python -m pytest -m 'not integration' --verbose
 
 integration:
-	python -m pytest -m integration
+	@python -m pytest -m integration
 
 coverage:
-	python -m pytest --cov=pyspamcop tests/
+	@python -m pytest --cov=pyspamcop tests/
 
 release: dist ## package and upload a release
 	python -m twine upload dist/*
