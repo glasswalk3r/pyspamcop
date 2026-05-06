@@ -241,7 +241,16 @@ def find_warnings(soup: BeautifulSoup) -> list[str]:
 
 
 def find_next_id(soup: BeautifulSoup) -> str | None:
-    """Finds the next SPAM ID to be reported."""
+    """
+    Finds the next SPAM ID to be reported.
+
+    It searches for an anchor tag that is a direct child of a strong tag:
+    <strong><a href="...?id=VALUE">Report Now</a></strong>
+
+    The function filters for links where the text content is "Report Now"
+    (after stripping whitespace). If found, it parses the 'href' attribute
+    to extract the value of the 'id' query parameter.
+    """
     logger = logging.getLogger(__name__)
 
     for anchor in soup.select("strong > a"):
@@ -268,3 +277,57 @@ def find_next_id(soup: BeautifulSoup) -> str | None:
                 return next_id
 
     return None
+
+
+def find_header_info(soup: BeautifulSoup) -> dict[str, str | None]:
+    """
+    Finds information from the e-mail header of the received SPAM.
+
+    It searches for <pre> tags within the <div id="content"> and parses
+    headers like 'X-Mailer' and 'Content-Type'.
+
+    Returns:
+        A dictionary with keys 'mailer', 'content_type', and 'charset'.
+    """
+    info: dict[str, str | None] = {"mailer": None, "content_type": None, "charset": None}
+
+    content_div = soup.find("div", id="content")
+    if not content_div:
+        return info
+
+    # Matches XPath /html/body/div[@id="content"]/pre
+    pre_nodes = content_div.find_all("pre", recursive=False)
+
+    for node in pre_nodes:
+        for line in node.get_text().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+
+            if line.startswith("X-Mailer:"):
+                info["mailer"] = line.split(":", 1)[1].strip()
+
+            elif line.startswith("Content-Type:"):
+                value = line.split(":", 1)[1].strip()
+                parts = value.split(";")
+
+                if len(parts) > 1:
+                    encoding = parts[0].lower().strip()
+                    charset_part = parts[1].lower().strip().replace('"', "")
+
+                    info["content_type"] = encoding
+                    if charset_part.startswith("boundary"):
+                        info["charset"] = None
+                    elif "=" in charset_part:
+                        info["charset"] = charset_part.split("=", 1)[1].strip()
+                else:
+                    # Normalization: remove trailing semicolon if present
+                    if value.endswith(";"):
+                        value = value[:-1]
+                    info["content_type"] = value
+
+            # Break early if both primary fields are found
+            if info["mailer"] and info["content_type"]:
+                return info
+
+    return info

@@ -4,7 +4,7 @@ import pytest
 
 from bs4 import BeautifulSoup
 
-from pyspamcop.html import find_errors, find_message_age, MessageAge, find_warnings, find_next_id
+from pyspamcop.html import find_errors, find_message_age, MessageAge, find_warnings, find_next_id, find_header_info
 
 
 def read_fixture(filename):
@@ -85,3 +85,23 @@ def test_find_next_id(expected_id, filename):
         return
 
     assert result == expected_id
+
+
+@pytest.mark.parametrize(
+    "filename, expected",
+    (
+        ("sendreport_form_ok.html", {"mailer": "Smart_Send_4_4_2", "content_type": "multipart/mixed", "charset": None}),
+        ("missing_sendreport_form.html", {"mailer": None, "content_type": "multipart/alternative", "charset": "utf-8"}),
+        ("boundary.html", {"mailer": None, "content_type": "multipart/alternative", "charset": None}),
+    ),
+)
+def test_find_header_info(filename, expected):
+    result = find_header_info(read_fixture(filename))
+    assert isinstance(result, dict)
+
+    for key in ("mailer", "content_type", "charset"):
+        if expected[key] is None:
+            assert result[key] is None
+            continue
+
+        assert result[key] == expected[key]
