@@ -68,7 +68,7 @@ class MailHostMessage(UnrecoverableSpamReportMessage):
         while current and len(messages) < 3:
             if isinstance(current, NavigableString):
                 text = current.strip()
-                if text:
+                if text != "":
                     messages.append(text)
             current = current.next_sibling
 
@@ -76,6 +76,57 @@ class MailHostMessage(UnrecoverableSpamReportMessage):
 
     def complete_message(self) -> str:
         return f"{self.messages[0]}. {self.messages[-1]}"
+
+
+EMAIL_BOUNCE_REGEX: Final[str] = re.compile(
+    r"^Your\semail\saddress,\s([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\shas\sreturned\sa\sbounce"
+)
+
+
+class EmailAddressBounceMessage(UnrecoverableSpamReportMessage):
+    def __init__(self, messages: list[str]) -> None:
+
+        if len(messages) != 3:
+            raise ValueError("Three messages are required for a bounce notification")
+
+        messages[0] = messages[0].replace(":", "")
+        messages[2] = messages[2].replace("'", "")
+        super().__init__(messages)
+
+    def email(self) -> str:
+        result = re.match(EMAIL_BOUNCE_REGEX, self.messages[0])
+
+        if result is not None:
+            return result.group(1).strip()
+
+        raise ValueError(f"{EMAIL_BOUNCE_REGEX} does not match {self.messages[0]}")
+
+    def subject(self) -> str:
+        return self.messages[1].split(":")[-1].strip()
+
+    def reason(self) -> str:
+        return self.messages[2].split(": ")[-1].strip().lower().replace("dns", "DNS").replace("=", "")
+
+    def complete_message(self) -> str:
+        return f"{self.email()} has returned a bounce due {self.reason()}"
+
+    @classmethod
+    def is_related(cls, message: str) -> bool:
+        return message.startswith("Bounce error")
+
+    @classmethod
+    def html_extract(cls, element: Tag) -> "Message":
+        messages = []
+        current = element.next_sibling
+
+        while current and len(messages) < 3:
+            if isinstance(current, NavigableString):
+                text = current.strip()
+                if text != "":
+                    messages.append(text)
+            current = current.next_sibling
+
+        return EmailAddressBounceMessage(messages)
 
 
 class SpamHeaderMessage(UnrecoverableSpamReportMessage):
@@ -156,6 +207,11 @@ def _errors_in_response(soup: BeautifulSoup) -> list[str]:
 
 
 def _errors_in_form(soup: BeautifulSoup) -> list[str]:
+    result = soup.find(name="strong")
+
+    if result is not None and EmailAddressBounceMessage.is_related(result.get_text()):
+        return [EmailAddressBounceMessage.html_extract(result)]
+
     return []
 
 

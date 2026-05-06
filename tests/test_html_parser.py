@@ -30,6 +30,15 @@ def read_fixture(filename):
             ),
             "Mailhost configuration problem, identified internal IP as source. Please correct this situation - register every email address where you receive spam",
         ),
+        (
+            "bounce_error.html",
+            (
+                "Your email address, glasswalk3r@yahoo.com.br has returned a bounce",
+                "Subject: Delivery Status Notification (Failure)",
+                "Reason: 5.4.7 - Delivery expired (message too old) DNS Soft Error looking up yahoo=",
+            ),
+            "glasswalk3r@yahoo.com.br has returned a bounce due 5.4.7 - delivery expired (message too old) DNS soft error looking up yahoo",
+        ),
     ),
 )
 def test_find_errors(filename, messages, formatted):
