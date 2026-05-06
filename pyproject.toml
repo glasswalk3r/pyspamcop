@@ -1,7 +1,7 @@
 [project]
 name = "pyspamcop"
 version = "0.1.0"
-description = "Web crawler for finishing SpamCop.net reports automatically"
+description = "Web crawler for finishing Spamcop.net reports automatically"
 authors = [
     { name = "Alceu Rodrigues de Freitas Junior", email = "glasswalk3r@yahoo.com.br" },
 ]
@@ -22,11 +22,11 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/pyspamcop"]
 
-[tool.pytest.ini_options]
-markers = ["integration: tests that requires integration"]
+[tool.pytest]
+markers = ["integration: tests that requires integration with other services"]
 
 [dependency-groups]
-dev = ["mypy>=1.15.0", "pytest>=8.3.5", "ruff>=0.9.9"]
+dev = ["mypy>=1.15.0", "pytest>=8.3.5", "pytest-cov>=7.1.0", "ruff>=0.9.9"]
 
 [tool.ruff]
 # Same as Black.

@@ -51,11 +51,14 @@ lint:
 	ruff check --fix
 	ruff format
 
-test: ## run tests quickly with the default Python
-	python -m pytest
+unit:
+	python -m pytest -m 'not integration'
+
+integration:
+	python -m pytest -m integration
 
 coverage:
-	pytest -v --cov
+	python -m pytest --cov=pyspamcop tests/
 
 release: dist ## package and upload a release
 	python -m twine upload dist/*
