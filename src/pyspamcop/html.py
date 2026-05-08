@@ -9,6 +9,7 @@ from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
 from typing import Final
+from pyspamcop.exception import UnknownReceiverFormat
 
 
 MAIL_TOO_OLD_REGEX: Final = re.compile(r"email\sis\stoo\sold")
@@ -331,3 +332,59 @@ def find_header_info(soup: BeautifulSoup) -> dict[str, str | None]:
                 return info
 
     return info
+
+
+@dataclass(slots=True)
+class Receiver:
+    address: str
+    report_id: str | None = None
+    devnull: bool = False
+    disabled: bool = False
+
+
+def find_receivers(soup: BeautifulSoup) -> list[list[str | None]]:
+    """
+    Finds information about where the spam reports were sent.
+
+    This function parses the HTML looking for confirmation of emailed reports,
+    extracting the receiver identifier and the associated SpamCop report ID (if available).
+
+    Args:
+        soup: A BeautifulSoup object representing the parsed HTML page.
+
+    Returns:
+        A list of lists, where each inner list contains two elements:
+        - The receiver identifier (str).
+        - The SpamCop report ID (str or None if not found).
+    """
+    receivers: list[list[str | None]] = []
+    devnull = "/dev/null'ing"
+    report_sent = "Spam report id"
+    reports_disabled = "Reports disabled for"
+    content_div = soup.find("div", id="content")
+    logger = logging.getLogger(__name__)
+
+    if content_div is None:
+        return receivers
+
+    for node in content_div.find_all(string=True):
+        text = node.get_text(strip=True)
+
+        if text == "":
+            continue
+
+        tokens = text.split(" ")
+
+        if text.startswith(devnull):
+            address = (tokens[-1].split("@"))[0]
+            receivers.append(Receiver(address=address, devnull=True))
+        elif text.startswith(report_sent):
+            receivers.append(Receiver(address=tokens[6], report_id=tokens[3]))
+        elif text.startswith(reports_disabled):
+            receivers.append(Receiver(address=tokens[-1], disabled=True))
+        else:
+            logger.error("Unexpected receivers format: %s", text)
+            logger.warning("Logging all HTML for debugging: %s", soup.prettify())
+            raise UnknownReceiverFormat()
+
+    return receivers

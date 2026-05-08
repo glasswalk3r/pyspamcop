@@ -4,7 +4,16 @@ import pytest
 
 from bs4 import BeautifulSoup
 
-from pyspamcop.html import find_errors, find_message_age, MessageAge, find_warnings, find_next_id, find_header_info
+from pyspamcop.html import (
+    find_errors,
+    find_message_age,
+    MessageAge,
+    find_warnings,
+    find_next_id,
+    find_header_info,
+    find_receivers,
+    Receiver,
+)
 
 
 def read_fixture(filename):
@@ -105,3 +114,15 @@ def test_find_header_info(filename, expected):
             continue
 
         assert result[key] == expected[key]
+
+
+def test_find_receivers():
+    result = find_receivers(read_fixture("post_reporting.html"))
+    assert isinstance(result, list)
+    assert len(result) == 4
+    assert result == [
+        Receiver(address="google-abuse-bounces-reports", devnull=True),
+        Receiver(address="dl_security_whois@navercorp.com", report_id="7151980235"),
+        Receiver(address="deliverabilityteam#epsilon.com", devnull=True),
+        Receiver(address="johndoe@foobar.net", disabled=True),
+    ]
