@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod, abstractclassmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import re
 from typing import Final
@@ -22,11 +22,13 @@ class Message(ABC):
         """A better formatted, single line message from all related messages."""
         pass
 
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def is_related(cls, message: str) -> bool:
         pass
 
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def html_extract(cls, element: Tag) -> "Message":
         """Com um pouco de sorte, somente o div será necessário"""
         pass
@@ -68,7 +70,7 @@ class MailHostMessage(UnrecoverableSpamReportMessage):
         return f"{self.messages[0]}. {self.messages[-1]}"
 
 
-EMAIL_BOUNCE_REGEX: Final[str] = re.compile(
+EMAIL_BOUNCE_REGEX: Final[re.Pattern[str]] = re.compile(
     r"^Your\semail\saddress,\s([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\shas\sreturned\sa\sbounce"
 )
 
@@ -106,7 +108,7 @@ class EmailAddressBounceMessage(UnrecoverableSpamReportMessage):
 
     @classmethod
     def html_extract(cls, element: Tag) -> "Message":
-        messages = []
+        messages: list[str] = []
         current = element.next_sibling
 
         while current and len(messages) < 3:

@@ -50,6 +50,7 @@ clean-test: ## remove test and coverage artifacts
 lint:
 	ruff check --fix
 	ruff format
+	python -m mypy -p pyspamcop
 
 unit:
 	@python -m pytest -m 'not integration' --verbose

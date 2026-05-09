@@ -24,9 +24,9 @@ NOTHING_REGEX: Final = re.compile(r"^Nothing")
 SPAM_AGE_REGEX: Final = re.compile(r"^Message\sis\s(\d+)\s(\w+)\sold", re.MULTILINE)
 
 
-def _messages_in(soup: BeautifulSoup, css_class: str, msg_types: list[Message]) -> list[str]:
+def _messages_in(soup: BeautifulSoup, css_class: str, msg_types: list[type[Message]]) -> list[Message]:
     all_content = [tag for tag in soup.find_all(name="div", id="content")]
-    messages = []
+    messages: list[Message] = []
 
     for content in all_content:
         for tag in content.find_all(name="div", class_=css_class):
@@ -40,11 +40,11 @@ def _messages_in(soup: BeautifulSoup, css_class: str, msg_types: list[Message]) 
     return messages
 
 
-def _errors_in_response(soup: BeautifulSoup) -> list[str]:
+def _errors_in_response(soup: BeautifulSoup) -> list[Message]:
     return _messages_in(soup=soup, css_class="error", msg_types=[MailHostMessage, SpamHeaderMessage])
 
 
-def _errors_in_form(soup: BeautifulSoup) -> list[str]:
+def _errors_in_form(soup: BeautifulSoup) -> list[Message]:
     result = soup.find(name="strong")
 
     if result is not None and EmailAddressBounceMessage.is_related(result.get_text()):
@@ -53,7 +53,7 @@ def _errors_in_form(soup: BeautifulSoup) -> list[str]:
     return []
 
 
-def find_errors(soup: BeautifulSoup) -> list[str]:
+def find_errors(soup: BeautifulSoup) -> list[Message]:
     """Tries to find all errors on the HTML, based on CSS classes."""
     errors = _errors_in_response(soup)
     errors.extend(_errors_in_form(soup))
@@ -69,7 +69,7 @@ def find_message_age(soup: BeautifulSoup) -> MessageAge | None:
     return None
 
 
-def find_warnings(soup: BeautifulSoup) -> list[str]:
+def find_warnings(soup: BeautifulSoup) -> list[Message]:
     return _messages_in(soup=soup, css_class="warning", msg_types=[MailhostForgeryMessage, FreshSpamMessage])
 
 
@@ -90,9 +90,9 @@ def find_next_id(soup: BeautifulSoup) -> str | None:
         link_text = anchor.get_text(strip=True).replace("\n", " ")
 
         if link_text == "Report Now":
-            href = anchor.get("href")
+            href = anchor.get(key="href", default=None)
 
-            if href is None:
+            if (href is None) or (not isinstance(href, str)):
                 continue
 
             parsed_url = urlparse(href)
@@ -166,22 +166,22 @@ def find_header_info(soup: BeautifulSoup) -> dict[str, str | None]:
     return info
 
 
-def find_receivers(soup: BeautifulSoup) -> list[list[str | None]]:
+def find_receivers(soup: BeautifulSoup) -> list[Receiver]:
     """
-    Finds information about where the spam reports were sent.
+    Finds information about where the SPAM reports were sent from the confirmation page.
 
-    This function parses the HTML looking for confirmation of emailed reports,
-    extracting the receiver identifier and the associated SpamCop report ID (if available).
+    This function parses the post-submission confirmation HTML to extract the actual
+    report destinations, unique SpamCop report IDs, and status (e.g., blackholed).
+    This is an auditing step, unlike the legacy find_best_contacts which identifies
+    reporting candidates on the analysis preview page.
 
     Args:
-        soup: A BeautifulSoup object representing the parsed HTML page.
+        soup: A BeautifulSoup object representing the parsed confirmation HTML page.
 
     Returns:
-        A list of lists, where each inner list contains two elements:
-        - The receiver identifier (str).
-        - The SpamCop report ID (str or None if not found).
+        A list of Receiver objects containing the reporting results.
     """
-    receivers: list[list[str | None]] = []
+    receivers: list[Receiver] = []
     devnull = "/dev/null'ing"
     report_sent = "Spam report id"
     reports_disabled = "Reports disabled for"
