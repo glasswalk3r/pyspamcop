@@ -209,3 +209,23 @@ def find_receivers(soup: BeautifulSoup) -> list[Receiver]:
             raise UnknownReceiverFormat()
 
     return receivers
+
+
+def find_best_contacts(soup: BeautifulSoup) -> list[str] | None:
+    content_div = soup.find("div", id="content")
+
+    if content_div is None:
+        return None
+
+    for node in content_div.find_all(string=True):
+        text = node.get_text(strip=True)
+
+        if text.startswith("Using best contacts"):
+            tokens = text.split(" ")
+
+            if len(tokens) == 0:
+                return None
+
+            return tokens[3:]
+
+    return None

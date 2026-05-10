@@ -13,6 +13,7 @@ from pyspamcop.html import (
     find_header_info,
     find_receivers,
     Receiver,
+    find_best_contacts,
 )
 
 
@@ -126,3 +127,16 @@ def test_find_receivers():
         Receiver(address="deliverabilityteam#epsilon.com", devnull=True),
         Receiver(address="johndoe@foobar.net", disabled=True),
     ]
+
+
+@pytest.mark.parametrize(
+    "filename, expected",
+    (("sendreport_form_ok.html", None), ("missing_sendreport_form.html", ["abuse@ovh.net", "noc@ovh.net"])),
+)
+def test_find_best_contacts(filename, expected):
+    result = find_best_contacts(read_fixture(filename))
+
+    if expected is None:
+        assert result is None
+    else:
+        assert result == expected
