@@ -154,10 +154,7 @@ def find_header_info(soup: BeautifulSoup) -> dict[str, str | None]:
                     elif "=" in charset_part:
                         info["charset"] = charset_part.split("=", 1)[1].strip()
                 else:
-                    # Normalization: remove trailing semicolon if present
-                    if value.endswith(";"):
-                        value = value[:-1]
-                    info["content_type"] = value
+                    info["content_type"] = value.rstrip(";")
 
             # Break early if both primary fields are found
             if info["mailer"] is not None and info["content_type"] is not None:
