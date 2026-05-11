@@ -18,7 +18,7 @@ from pyspamcop.domain import (
 )
 from pyspamcop.exception import UnknownReceiverFormat
 
-
+TARGET_HTML_FORM = "sendreport"
 MAIL_TOO_OLD_REGEX: Final = re.compile(r"email\sis\stoo\sold")
 NOTHING_REGEX: Final = re.compile(r"^Nothing")
 SPAM_AGE_REGEX: Final = re.compile(r"^Message\sis\s(\d+)\s(\w+)\sold", re.MULTILINE)
@@ -229,3 +229,34 @@ def find_best_contacts(soup: BeautifulSoup) -> list[str] | None:
             return tokens[3:]
 
     return None
+
+
+def report_form(soup: BeautifulSoup) -> dict[str, str] | None:
+    form = soup.find("form", attrs={"name": "sendreport", "action": "/sc", "method": "post"})
+
+    if form is None:
+        return None
+
+    data = {}
+
+    for input in form.find_all("input", attrs={"type": "hidden"}):
+        data[input["name"]] = input["value"]
+
+    for input in form.find_all("input", attrs={"type": "checkbox"}):
+        name = input["name"]
+
+        if input.has_attr("checked"):
+            data[name] = "on"
+        else:
+            data[name] = "off"
+
+    for ta in form.find_all("textarea"):
+        name = ta["name"]
+        text = ta.string
+
+        if text is None:
+            data[name] = ""
+        else:
+            data[name] = text
+
+    return data

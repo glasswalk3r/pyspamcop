@@ -14,6 +14,8 @@ from pyspamcop.html import (
     find_receivers,
     Receiver,
     find_best_contacts,
+    report_form,
+    TARGET_HTML_FORM,
 )
 
 
@@ -140,3 +142,31 @@ def test_find_best_contacts(filename, expected):
         assert result is None
     else:
         assert result == expected
+
+
+@pytest.mark.parametrize(
+    "filename, expected",
+    (("sendreport_form_ok.html", TARGET_HTML_FORM), ("missing_sendreport_form.html", None)),
+)
+def test_report_form(filename, expected):
+    result = report_form(read_fixture(filename))
+
+    if expected is None:
+        assert result is None
+    else:
+        assert isinstance(result, dict)
+        # 1. Verify that we DID NOT capture the login form fields
+        assert "username" not in result, "Error: Captured fields from the login form"
+        assert "password" not in result, "Error: Captured fields from the login form"
+
+        for field in ("action", "spamid", "crc", "source", "reports", "master1", "send1", "notes", "comment1"):
+            assert field in result, f"Expected input field '{field}' not found"
+
+        assert result["action"] == "flexsend", "Incorrect action type"
+        assert result["spamid"] == "6728954861", "Mismatch in spamid"
+        assert result["crc"] == "b68b40f5446eed4c8aad536ab243baa1", "Mismatch in CRC token"
+        assert result["source"] == "50.31.63.11", "Mismatch in source IP"
+        assert result["reports"] == "abuse#sendgrid.com@devnull.spamcop.net:source:50.31.63.11"
+        assert result["master1"] == "abuse#sendgrid.com@devnull.spamcop.net"
+        assert result["send1"] == "on", "The report checkbox 'send1' should be 'on'"
+        assert len(result) == 14, f"Expected 14 fields for sendreport, found {len(result)}"
