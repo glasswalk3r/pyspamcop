@@ -4,15 +4,14 @@ import pytest
 
 from bs4 import BeautifulSoup
 
+from pyspamcop.domain import MessageAge, Receiver, EmailHeader
 from pyspamcop.html import (
     find_errors,
     find_message_age,
-    MessageAge,
     find_warnings,
     find_next_id,
     find_header_info,
     find_receivers,
-    Receiver,
     find_best_contacts,
     report_form,
     TARGET_HTML_FORM,
