@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import re
 from typing import Final
 from time import time
+from email.header import decode_header, make_header
 
 from bs4.element import NavigableString, Tag
 
@@ -193,7 +194,7 @@ class MessageAge:
 @dataclass(slots=True)
 class Receiver:
     """
-    Represents a destination or entity that receives a spam report.
+    Represents a destination or entity that receives a SPAM report.
 
     It tracks the specific recipient address, the resulting SpamCop report ID,
     and whether the report was successfully sent, blackholed, or if reporting is disabled.
@@ -209,3 +210,26 @@ class Receiver:
             return self.report_id
 
         return f"N/A-{time()}"
+
+
+class EmailHeader:
+    """Representation of the e-mail header.
+
+    The sender attribute would be probably better if named "from", but this is a reserved word.
+    """
+
+    def __init__(
+        self, sender: str, subject: str, mailer: str | None, content_type: str | None, charset: str | None
+    ) -> None:
+        if subject is None or subject == "":
+            raise ValueError("The subject parameter must be a non-empty string or a RFC2047 encoded-words")
+
+        if sender is None or sender == "":
+            raise ValueError("The sender parameter must be a non-empty string or a RFC2047 encoded-words")
+
+        self.subject = str(make_header(decode_header(subject)))
+        self.sender = str(make_header(decode_header(sender)))
+
+        self.mailer = mailer
+        self.content_type = content_type
+        self.charset = charset

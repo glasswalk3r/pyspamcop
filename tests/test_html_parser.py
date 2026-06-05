@@ -101,21 +101,48 @@ def test_find_next_id(expected_id, filename):
 @pytest.mark.parametrize(
     "filename, expected",
     (
-        ("sendreport_form_ok.html", {"mailer": "Smart_Send_4_4_2", "content_type": "multipart/mixed", "charset": None}),
-        ("missing_sendreport_form.html", {"mailer": None, "content_type": "multipart/alternative", "charset": "utf-8"}),
-        ("boundary.html", {"mailer": None, "content_type": "multipart/alternative", "charset": None}),
+        (
+            "sendreport_form_ok.html",
+            {
+                "mailer": "Smart_Send_4_4_2",
+                "content_type": "multipart/mixed",
+                "charset": None,
+                "sender": "Alon Elkin <alon.elkien@gmail.com>",
+                "subject": "PHD. Hebrew to English and German Translator",
+            },
+        ),
+        (
+            "missing_sendreport_form.html",
+            {
+                "mailer": None,
+                "content_type": "multipart/alternative",
+                "charset": "utf-8",
+                "sender": '" Tognato - Bem Imobiliária " <tognato@bemimob.com.br>',
+                "subject": "Breve Lançamento Casa do Ator",
+            },
+        ),
+        (
+            "boundary.html",
+            {
+                "mailer": None,
+                "content_type": "multipart/alternative",
+                "charset": None,
+                "sender": "Alberto <jolymax017@gmail.com>",
+                "subject": "/...Can You Partner With me?..",
+            },
+        ),
     ),
 )
 def test_find_header_info(filename, expected):
     result = find_header_info(read_fixture(filename))
-    assert isinstance(result, dict)
+    assert isinstance(result, EmailHeader)
 
-    for key in ("mailer", "content_type", "charset"):
+    for key in ("mailer", "content_type", "charset", "sender", "subject"):
         if expected[key] is None:
-            assert result[key] is None
+            assert getattr(result, key) is None
             continue
 
-        assert result[key] == expected[key]
+        assert getattr(result, key) == expected[key]
 
 
 def test_find_receivers():

@@ -15,6 +15,7 @@ from pyspamcop.domain import (
     MessageAge,
     Receiver,
     EmailAddressBounceMessage,
+    EmailHeader,
 )
 from pyspamcop.exception import UnknownReceiverFormat
 
@@ -112,6 +113,7 @@ def find_next_id(soup: BeautifulSoup) -> str | None:
     return None
 
 
+# TODO: change the function name to "find_header"
 def find_header_info(soup: BeautifulSoup) -> dict[str, str | None]:
     """
     Finds information from the e-mail header of the received SPAM.
@@ -140,6 +142,12 @@ def find_header_info(soup: BeautifulSoup) -> dict[str, str | None]:
             if line.startswith("X-Mailer:"):
                 info["mailer"] = line.split(":", 1)[1].strip()
 
+            if line.startswith("From:"):
+                info["from"] = line.split(":", 1)[1].strip()
+
+            if line.startswith("Subject:"):
+                info["subject"] = line.split(":", 1)[1].strip()
+
             elif line.startswith("Content-Type:"):
                 value = line.split(":", 1)[1].strip()
                 parts = value.split(";")
@@ -156,11 +164,13 @@ def find_header_info(soup: BeautifulSoup) -> dict[str, str | None]:
                 else:
                     info["content_type"] = value.rstrip(";")
 
-            # Break early if both primary fields are found
-            if info["mailer"] is not None and info["content_type"] is not None:
-                return info
-
-    return info
+    return EmailHeader(
+        content_type=info["content_type"],
+        mailer=info["mailer"],
+        charset=info["charset"],
+        sender=info["from"],
+        subject=info["subject"],
+    )
 
 
 def find_receivers(soup: BeautifulSoup) -> list[Receiver]:
