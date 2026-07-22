@@ -11,7 +11,7 @@ def instance():
 
 @pytest.mark.integration
 def test_client(instance):
-    file_path = os.path.join(os.environ["HOME"], ".spamcop.yaml")
+    file_path = os.path.join(os.environ["HOME"], ".pyspamcop.yaml")
     cfg = read_config(file_path)
 
     for account in cfg.accounts:

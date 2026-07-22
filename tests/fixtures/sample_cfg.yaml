@@ -1,6 +1,5 @@
 ---
 execution_options:
-  all_reports: true
   automatic_confirmation: true
   dry_run: false
   verbosity: INFO

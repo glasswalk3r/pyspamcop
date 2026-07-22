@@ -61,7 +61,7 @@ you use to install Python modules.
 You can also provide a configuration file to avoid having to provide the same
 information everytime you want to execute the program.
 
-The program will look for a configuration file name `.spamcop.yaml` in the
+The program will look for a configuration file name `.pyspamcop.yaml` in the
 corresponding home directory of the user (that will dependend on the OS you're
 executing it). Pay attention to the dot ('.') in front of the file.
 
@@ -71,9 +71,6 @@ properties below:
 ```YAML
 ---
 execution_options:
-  all_reports: true
-  automatic_confirmation: true
-  dry_run: false
   verbosity: INFO
   database:
     enabled: true
