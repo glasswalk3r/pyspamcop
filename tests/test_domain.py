@@ -5,11 +5,14 @@ from pyspamcop.domain import (
     MailHostMessage,
     EmailAddressBounceMessage,
     SpamHeaderMessage,
+    LoginFailedMessage,
+    ReportsDisabledMessage,
     WarningMessage,
     MailhostForgeryMessage,
     FreshSpamMessage,
     MessageAge,
     Receiver,
+    Summary,
 )
 
 
@@ -23,6 +26,8 @@ from pyspamcop.domain import (
         (WarningMessage, Message),
         (MailhostForgeryMessage, WarningMessage),
         (FreshSpamMessage, WarningMessage),
+        (LoginFailedMessage, UnrecoverableSpamReportMessage),
+        (ReportsDisabledMessage, UnrecoverableSpamReportMessage),
     ],
 )
 def test_domain_hierarchy(cls, parent):
@@ -58,10 +63,37 @@ def test_simple_messages(cls, messages, expected_complete):
         (SpamHeaderMessage, "Failed to load spam header", True),
         (MailhostForgeryMessage, "Possible forgery", True),
         (FreshSpamMessage, "Yum", True),
+        (LoginFailedMessage, "Login failed, please try again", True),
+        (LoginFailedMessage, "Something else", False),
+        (ReportsDisabledMessage, "Reports disabled for user@example.com", True),
+        (ReportsDisabledMessage, "Something else", False),
     ],
 )
 def test_is_related(cls, text, expected):
     assert cls.is_related(text) == expected
+
+
+def test_login_failed_message():
+    obj = LoginFailedMessage(["Login failed, please try again (is your caps-lock on?)"])
+    assert obj.complete_message() == "Login failed, please try again (is your caps-lock on?)"
+
+
+def test_reports_disabled_message():
+    obj = ReportsDisabledMessage(["Reports disabled for user@example.com"])
+    assert obj.complete_message() == "Reports disabled for user@example.com"
+
+
+def test_summary_defaults():
+    s = Summary(tracking_id="abc123")
+    assert s.header is None
+    assert s.age is None
+    assert s.receivers == []
+    assert s.contacts == []
+
+
+def test_summary_tracking_url():
+    s = Summary(tracking_id="z6731356012zdc1bc09296ac2635b0861f61911073e5z")
+    assert s.tracking_url == "https://www.spamcop.net/sc?id=z6731356012zdc1bc09296ac2635b0861f61911073e5z"
 
 
 def test_email_bounce_message():

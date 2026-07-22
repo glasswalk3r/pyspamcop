@@ -10,7 +10,7 @@ from pyspamcop.html import (
     find_message_age,
     find_warnings,
     find_next_id,
-    find_header_info,
+    find_header,
     find_receivers,
     find_best_contacts,
     report_form,
@@ -133,8 +133,8 @@ def test_find_next_id(expected_id, filename):
         ),
     ),
 )
-def test_find_header_info(filename, expected):
-    result = find_header_info(read_fixture(filename))
+def test_find_header(filename, expected):
+    result = find_header(read_fixture(filename))
     assert isinstance(result, EmailHeader)
 
     for key in ("mailer", "content_type", "charset", "sender", "subject"):
