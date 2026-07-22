@@ -2,6 +2,7 @@
 
 import logging
 import re
+from dataclasses import dataclass, field
 from urllib.parse import urlparse, parse_qs
 
 from bs4 import BeautifulSoup
@@ -10,6 +11,8 @@ from pyspamcop.domain import (
     Message,
     MailHostMessage,
     SpamHeaderMessage,
+    LoginFailedMessage,
+    ReportsDisabledMessage,
     MailhostForgeryMessage,
     FreshSpamMessage,
     MessageAge,
@@ -20,6 +23,24 @@ from pyspamcop.domain import (
 from pyspamcop.exception import UnknownReceiverFormat
 
 TARGET_HTML_FORM = "sendreport"
+
+
+@dataclass
+class LoginPage:
+    errors: list[Message]
+    next_id: str | None
+
+
+@dataclass
+class ReportPage:
+    errors: list[Message]
+    warnings: list[Message]
+    header: EmailHeader | None
+    age: MessageAge | None
+    contacts: list[str] = field(default_factory=list)
+    form: dict[str, str] | None = None
+
+
 MAIL_TOO_OLD_REGEX: Final = re.compile(r"email\sis\stoo\sold")
 NOTHING_REGEX: Final = re.compile(r"^Nothing")
 SPAM_AGE_REGEX: Final = re.compile(r"^Message\sis\s(\d+)\s(\w+)\sold", re.MULTILINE)
@@ -42,7 +63,11 @@ def _messages_in(soup: BeautifulSoup, css_class: str, msg_types: list[type[Messa
 
 
 def _errors_in_response(soup: BeautifulSoup) -> list[Message]:
-    return _messages_in(soup=soup, css_class="error", msg_types=[MailHostMessage, SpamHeaderMessage])
+    return _messages_in(
+        soup=soup,
+        css_class="error",
+        msg_types=[MailHostMessage, SpamHeaderMessage, LoginFailedMessage, ReportsDisabledMessage],
+    )
 
 
 def _errors_in_form(soup: BeautifulSoup) -> list[Message]:
@@ -113,8 +138,7 @@ def find_next_id(soup: BeautifulSoup) -> str | None:
     return None
 
 
-# TODO: change the function name to "find_header"
-def find_header_info(soup: BeautifulSoup) -> dict[str, str | None]:
+def find_header(soup: BeautifulSoup) -> dict[str, str | None]:
     """
     Finds information from the e-mail header of the received SPAM.
 
@@ -141,9 +165,11 @@ def find_header_info(soup: BeautifulSoup) -> dict[str, str | None]:
 
             if line.startswith("X-Mailer:"):
                 info["mailer"] = line.split(":", 1)[1].strip()
+                continue
 
             if line.startswith("From:"):
                 info["from"] = line.split(":", 1)[1].strip()
+                continue
 
             if line.startswith("Subject:"):
                 info["subject"] = line.split(":", 1)[1].strip()
@@ -270,3 +296,33 @@ def report_form(soup: BeautifulSoup) -> dict[str, str] | None:
             data[name] = text
 
     return data
+
+
+def _to_soup(html: str) -> BeautifulSoup:
+    """Single entry point for raw HTML → BeautifulSoup so a sanitizer can be inserted here in one place without touching
+    any other function."""
+    return BeautifulSoup(html, "html.parser")
+
+
+def parse_login_page(html: str) -> LoginPage:
+    """Parse the page returned after a login attempt."""
+    soup = _to_soup(html)
+    return LoginPage(errors=find_errors(soup), next_id=find_next_id(soup))
+
+
+def parse_report_page(html: str) -> ReportPage:
+    """Parse the spam analysis page returned by a spam_report request."""
+    soup = _to_soup(html)
+    return ReportPage(
+        errors=find_errors(soup),
+        warnings=find_warnings(soup),
+        header=find_header(soup),
+        age=find_message_age(soup),
+        contacts=find_best_contacts(soup) or [],
+        form=report_form(soup),
+    )
+
+
+def parse_confirmation_page(html: str) -> list[Receiver]:
+    """Parse the confirmation page returned after submitting a spam report."""
+    return find_receivers(_to_soup(html))

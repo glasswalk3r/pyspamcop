@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 from typing import Final
 from time import time
@@ -31,7 +31,7 @@ class Message(ABC):
     @classmethod
     @abstractmethod
     def html_extract(cls, element: Tag) -> "Message":
-        """Com um pouco de sorte, somente o div será necessário"""
+        """Extracts a instance (or multiple) of Message from HTML using an element."""
         pass
 
     def __repr__(self) -> str:
@@ -135,6 +135,36 @@ class SpamHeaderMessage(UnrecoverableSpamReportMessage):
         return self.messages[0]
 
 
+class LoginFailedMessage(UnrecoverableSpamReportMessage):
+    """Login attempt to SpamCop was rejected — credentials are invalid."""
+
+    @classmethod
+    def is_related(cls, message: str) -> bool:
+        return message.startswith("Login failed")
+
+    @classmethod
+    def html_extract(cls, element: Tag) -> "Message":
+        return LoginFailedMessage([element.get_text()])
+
+    def complete_message(self) -> str:
+        return self.messages[0]
+
+
+class ReportsDisabledMessage(UnrecoverableSpamReportMessage):
+    """SpamCop has disabled reports for a specific address on this report."""
+
+    @classmethod
+    def is_related(cls, message: str) -> bool:
+        return message.startswith("Reports disabled for")
+
+    @classmethod
+    def html_extract(cls, element: Tag) -> "Message":
+        return ReportsDisabledMessage([element.get_text()])
+
+    def complete_message(self) -> str:
+        return self.messages[0]
+
+
 class WarningMessage(Message):
     """Messages that are only warnings, but SPAM report can be completed."""
 
@@ -233,3 +263,18 @@ class EmailHeader:
         self.mailer = mailer
         self.content_type = content_type
         self.charset = charset
+
+
+@dataclass
+class Summary:
+    """Aggregates all metadata collected during one complete SPAM report cycle."""
+
+    tracking_id: str
+    header: EmailHeader | None = None
+    age: MessageAge | None = None
+    receivers: list[Receiver] = field(default_factory=list)
+    contacts: list[str] = field(default_factory=list)
+
+    @property
+    def tracking_url(self) -> str:
+        return f"https://www.spamcop.net/sc?id={self.tracking_id}"
