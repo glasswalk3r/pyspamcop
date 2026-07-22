@@ -29,6 +29,7 @@ class HTTPClient(ClientBase):
         self.form_login_path: str = "mcgi"
         self.__client: httpx.Client = httpx.Client(headers={"user-agent": self.user_agent()}, follow_redirects=True)
         self.__cookies: dict[str, str] | None = None
+        self.__last_response: str = ""
 
     def user_agent(self) -> str:
         """Return the HTTP user-agent header value used in interactions with SpamCop."""
@@ -65,14 +66,22 @@ class HTTPClient(ClientBase):
         """Overwrite from base class."""
         return self.__cookies is not None
 
-    def spam_report(self, report_id: str):
+    def spam_report(self, report_id: str) -> str:
         """Overwrite from base class."""
-        pass
+        url = f"https://{self.domain}/{self.report_path}"
+        response = self.__client.get(url, params={self.report_param: report_id})
+        response.raise_for_status()
+        self.__last_response = response.text
+        return self.__last_response
 
-    def confirm_report(self) -> str:
+    def confirm_report(self, form_data: dict[str, str]) -> str:
         """Overwrite from base class."""
-        pass
+        url = f"https://{self.domain}/{self.report_path}"
+        response = self.__client.post(url, data=form_data)
+        response.raise_for_status()
+        self.__last_response = response.text
+        return self.__last_response
 
     def last_response(self) -> str:
-        """Return the response data from the last interaction with SpamCop."""
-        pass
+        """Overwrite from base class."""
+        return self.__last_response

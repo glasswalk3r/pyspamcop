@@ -31,15 +31,13 @@ class ClientBase(ABC):
         pass
 
     @abstractmethod
-    def spam_report(self, report_id: str):
-        """Retrieves a SPAM report.
-
-        Expects as parameter a report ID."""
+    def spam_report(self, report_id: str) -> str:
+        """Fetch the analysis page for a pending SPAM report by it's ID."""
         pass
 
     @abstractmethod
-    def confirm_report(self):
-        """Complete the SPAM report, by confirming it's information is OK."""
+    def confirm_report(self, form_data: dict[str, str]) -> str:
+        """Submit the sendreport form to complete the SPAM report."""
         pass
 
     @abstractmethod
