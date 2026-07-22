@@ -83,7 +83,7 @@ def _siblings_only(element: Tag, total: int) -> list[str]:
 
 
 # Maps each Message subclass to how its raw text fragments are located in the DOM relative to
-# the tag that matched its CSS class, since that shape isn't something the domain layer should know.
+# the tag that matched its CSS class
 _FRAGMENT_EXTRACTORS: Final[dict[type[Message], Callable[[Tag], list[str]]]] = {
     MailHostMessage: lambda tag: _own_plus_siblings(tag, total=3),
     EmailAddressBounceMessage: lambda tag: _siblings_only(tag, total=3),
@@ -189,7 +189,7 @@ def find_next_id(soup: BeautifulSoup) -> str | None:
     return None
 
 
-def find_header(soup: BeautifulSoup) -> dict[str, str | None]:
+def find_header(soup: BeautifulSoup) -> EmailHeader | None:
     """
     Finds information from the e-mail header of the received SPAM.
 
@@ -197,13 +197,13 @@ def find_header(soup: BeautifulSoup) -> dict[str, str | None]:
     headers like 'X-Mailer' and 'Content-Type'.
 
     Returns:
-        A dictionary with keys 'mailer', 'content_type', and 'charset'.
+        An EmailHeader, or None if the header could not be found or is missing a sender/subject.
     """
-    info: dict[str, str | None] = {"mailer": None, "content_type": None, "charset": None}
+    info: dict[str, str | None] = {"mailer": None, "content_type": None, "charset": None, "from": None, "subject": None}
     content_div = soup.find("div", id="content")
 
     if content_div is None:
-        return info
+        return None
 
     pre_nodes = content_div.find_all("pre", recursive=False)
 
@@ -241,12 +241,18 @@ def find_header(soup: BeautifulSoup) -> dict[str, str | None]:
                 else:
                     info["content_type"] = value.rstrip(";")
 
+    sender = info["from"]
+    subject = info["subject"]
+
+    if sender is None or subject is None:
+        return None
+
     return EmailHeader(
         content_type=info["content_type"],
         mailer=info["mailer"],
         charset=info["charset"],
-        sender=info["from"],
-        subject=info["subject"],
+        sender=sender,
+        subject=subject,
     )
 
 
@@ -324,13 +330,13 @@ def report_form(soup: BeautifulSoup) -> dict[str, str] | None:
     if form is None:
         return None
 
-    data = {}
+    data: dict[str, str] = {}
 
     for input in form.find_all("input", attrs={"type": "hidden"}):
-        data[input["name"]] = input["value"]
+        data[str(input["name"])] = str(input["value"])
 
     for input in form.find_all("input", attrs={"type": "checkbox"}):
-        name = input["name"]
+        name = str(input["name"])
 
         if input.has_attr("checked"):
             data[name] = "on"
@@ -338,13 +344,13 @@ def report_form(soup: BeautifulSoup) -> dict[str, str] | None:
             data[name] = "off"
 
     for ta in form.find_all("textarea"):
-        name = ta["name"]
+        name = str(ta["name"])
         text = ta.string
 
         if text is None:
             data[name] = ""
         else:
-            data[name] = text
+            data[name] = str(text)
 
     return data
 

@@ -28,7 +28,7 @@ class HTTPClient(ClientBase):
         self.domain: str = "www.spamcop.net"
         self.form_login_path: str = "mcgi"
         self.__client: httpx.Client = httpx.Client(headers={"user-agent": self.user_agent()}, follow_redirects=True)
-        self.__cookies: dict[str, str] | None = None
+        self.__cookies: httpx.Cookies | None = None
         self.__last_response: str = ""
 
     def user_agent(self) -> str:

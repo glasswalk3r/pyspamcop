@@ -23,7 +23,7 @@ class Configuration:
     dry_run: bool
     verbosity: str
     db_path: str | None
-    accounts: list[EmailAccount] = field(default=list)
+    accounts: list[EmailAccount] = field(default_factory=list)
 
     def uses_db(self) -> bool:
         if self.db_path is not None and self.db_path != "":
