@@ -5,8 +5,6 @@ from typing import Final
 from time import time
 from email.header import decode_header, make_header
 
-from bs4.element import NavigableString, Tag
-
 
 class Message(ABC):
     """A message parsed from Spamcop webpage."""
@@ -28,12 +26,6 @@ class Message(ABC):
     def is_related(cls, message: str) -> bool:
         pass
 
-    @classmethod
-    @abstractmethod
-    def html_extract(cls, element: Tag) -> "Message":
-        """Extracts a instance (or multiple) of Message from HTML using an element."""
-        pass
-
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}:{self.messages}"
 
@@ -52,20 +44,6 @@ class MailHostMessage(UnrecoverableSpamReportMessage):
     @classmethod
     def is_related(cls, message: str) -> bool:
         return message.startswith("Mailhost configuration problem")
-
-    @classmethod
-    def html_extract(cls, element: Tag) -> "Message":
-        messages = [element.get_text()]
-        current = element.next_sibling
-
-        while current and len(messages) < 3:
-            if isinstance(current, NavigableString):
-                text = current.strip()
-                if text != "":
-                    messages.append(text)
-            current = current.next_sibling
-
-        return MailHostMessage(messages)
 
     def complete_message(self) -> str:
         return f"{self.messages[0]}. {self.messages[-1]}"
@@ -107,29 +85,11 @@ class EmailAddressBounceMessage(UnrecoverableSpamReportMessage):
     def is_related(cls, message: str) -> bool:
         return message.startswith("Bounce error")
 
-    @classmethod
-    def html_extract(cls, element: Tag) -> "Message":
-        messages: list[str] = []
-        current = element.next_sibling
-
-        while current and len(messages) < 3:
-            if isinstance(current, NavigableString):
-                text = current.strip()
-                if text != "":
-                    messages.append(text)
-            current = current.next_sibling
-
-        return EmailAddressBounceMessage(messages)
-
 
 class SpamHeaderMessage(UnrecoverableSpamReportMessage):
     @classmethod
     def is_related(cls, message: str) -> bool:
         return message.startswith("Failed to load spam header")
-
-    @classmethod
-    def html_extract(cls, element: Tag) -> "Message":
-        return SpamHeaderMessage([element.get_text()])
 
     def complete_message(self) -> str:
         return self.messages[0]
@@ -142,10 +102,6 @@ class LoginFailedMessage(UnrecoverableSpamReportMessage):
     def is_related(cls, message: str) -> bool:
         return message.startswith("Login failed")
 
-    @classmethod
-    def html_extract(cls, element: Tag) -> "Message":
-        return LoginFailedMessage([element.get_text()])
-
     def complete_message(self) -> str:
         return self.messages[0]
 
@@ -156,10 +112,6 @@ class ReportsDisabledMessage(UnrecoverableSpamReportMessage):
     @classmethod
     def is_related(cls, message: str) -> bool:
         return message.startswith("Reports disabled for")
-
-    @classmethod
-    def html_extract(cls, element: Tag) -> "Message":
-        return ReportsDisabledMessage([element.get_text()])
 
     def complete_message(self) -> str:
         return self.messages[0]
@@ -176,22 +128,6 @@ class MailhostForgeryMessage(WarningMessage):
     def is_related(cls, message: str) -> bool:
         return message.startswith("Possible forgery")
 
-    @classmethod
-    def html_extract(cls, element: Tag) -> "Message":
-        messages = [element.get_text()]
-        current = element.next_sibling
-
-        while current and len(messages) < 2:
-            if isinstance(current, NavigableString):
-                text = current.strip()
-
-                if text != "":
-                    messages.append(text)
-
-            current = current.next_sibling
-
-        return MailhostForgeryMessage(messages)
-
     def complete_message(self) -> str:
         return ". ".join(self.messages)
 
@@ -200,10 +136,6 @@ class FreshSpamMessage(WarningMessage):
     @classmethod
     def is_related(cls, message: str) -> bool:
         return message.startswith("Yum")
-
-    @classmethod
-    def html_extract(cls, element: Tag) -> "Message":
-        return FreshSpamMessage([element.get_text()])
 
     def complete_message(self) -> str:
         return self.messages[0]

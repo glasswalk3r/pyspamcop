@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from urllib.parse import urlparse, parse_qs
 
 from bs4 import BeautifulSoup
-from typing import Final
+from bs4.element import NavigableString, Tag
+from typing import Callable, Final
 from pyspamcop.domain import (
     Message,
     MailHostMessage,
@@ -46,6 +47,54 @@ NOTHING_REGEX: Final = re.compile(r"^Nothing")
 SPAM_AGE_REGEX: Final = re.compile(r"^Message\sis\s(\d+)\s(\w+)\sold", re.MULTILINE)
 
 
+def _own_text(element: Tag) -> list[str]:
+    """The element's own text, as a single-item fragment list."""
+    return [element.get_text()]
+
+
+def _own_plus_siblings(element: Tag, total: int) -> list[str]:
+    """The element's own text, followed by sibling text nodes, up to `total` fragments."""
+    fragments = [element.get_text()]
+    current = element.next_sibling
+
+    while current and len(fragments) < total:
+        if isinstance(current, NavigableString):
+            text = current.strip()
+            if text != "":
+                fragments.append(text)
+        current = current.next_sibling
+
+    return fragments
+
+
+def _siblings_only(element: Tag, total: int) -> list[str]:
+    """Sibling text nodes only (the element's own text is not part of the report), up to `total` fragments."""
+    fragments: list[str] = []
+    current = element.next_sibling
+
+    while current and len(fragments) < total:
+        if isinstance(current, NavigableString):
+            text = current.strip()
+            if text != "":
+                fragments.append(text)
+        current = current.next_sibling
+
+    return fragments
+
+
+# Maps each Message subclass to how its raw text fragments are located in the DOM relative to
+# the tag that matched its CSS class, since that shape isn't something the domain layer should know.
+_FRAGMENT_EXTRACTORS: Final[dict[type[Message], Callable[[Tag], list[str]]]] = {
+    MailHostMessage: lambda tag: _own_plus_siblings(tag, total=3),
+    EmailAddressBounceMessage: lambda tag: _siblings_only(tag, total=3),
+    SpamHeaderMessage: _own_text,
+    LoginFailedMessage: _own_text,
+    ReportsDisabledMessage: _own_text,
+    MailhostForgeryMessage: lambda tag: _own_plus_siblings(tag, total=2),
+    FreshSpamMessage: _own_text,
+}
+
+
 def _messages_in(soup: BeautifulSoup, css_class: str, msg_types: list[type[Message]]) -> list[Message]:
     all_content = [tag for tag in soup.find_all(name="div", id="content")]
     messages: list[Message] = []
@@ -54,9 +103,10 @@ def _messages_in(soup: BeautifulSoup, css_class: str, msg_types: list[type[Messa
         for tag in content.find_all(name="div", class_=css_class):
             message = tag.get_text()
 
-            for error in msg_types:
-                if error.is_related(message):
-                    messages.append(error.html_extract(tag))
+            for msg_type in msg_types:
+                if msg_type.is_related(message):
+                    fragments = _FRAGMENT_EXTRACTORS[msg_type](tag)
+                    messages.append(msg_type(fragments))
                     break
 
     return messages
@@ -74,7 +124,8 @@ def _errors_in_form(soup: BeautifulSoup) -> list[Message]:
     result = soup.find(name="strong")
 
     if result is not None and EmailAddressBounceMessage.is_related(result.get_text()):
-        return [EmailAddressBounceMessage.html_extract(result)]
+        fragments = _FRAGMENT_EXTRACTORS[EmailAddressBounceMessage](result)
+        return [EmailAddressBounceMessage(fragments)]
 
     return []
 
