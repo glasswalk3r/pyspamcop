@@ -2,7 +2,7 @@
 
 from importlib.metadata import version
 from ruamel.yaml import YAML
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pyspamcop.exception import BaseExceptionError
 
 
@@ -19,12 +19,11 @@ class EmailAccount:
 
 @dataclass(slots=True)
 class Configuration:
-    all_reports: bool
     automatic_confirmation: bool
     dry_run: bool
     verbosity: str
     db_path: str | None
-    accounts: list[EmailAccount]
+    accounts: list[EmailAccount] = field(default=list)
 
     def uses_db(self) -> bool:
         if self.db_path is not None and self.db_path != "":
@@ -61,7 +60,7 @@ def _validate_directives(data: dict) -> None:
         if first_level_key not in expected:
             raise InvalidCfgDirectiveError(first_level_key)
 
-    expected = set(["all_reports", "automatic_confirmation", "dry_run", "verbosity", "database"])
+    expected = set(["automatic_confirmation", "dry_run", "verbosity", "database"])
 
     for exec_opt in data["execution_options"]:
         if exec_opt not in expected:
@@ -102,7 +101,6 @@ def read_config(config_file: str) -> Configuration:
         db_path = None
 
     config = Configuration(
-        all_reports=data.get("all_reports", False),
         automatic_confirmation=data.get("automatic_configuration", False),
         dry_run=data.get("dry_run", False),
         verbosity=data.get("verbosity", "INFO"),
