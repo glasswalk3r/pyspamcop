@@ -4,10 +4,23 @@ import logging
 import os
 
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+from importlib.metadata import version
 
 from pyspamcop.runner import run_account
 from pyspamcop.config import read_config
 from pyspamcop.http.client import HTTPClient
+
+
+def log_config(verbosity: str):
+    is_debug = verbosity == "DEBUG"
+    log_format = (
+        "%(asctime)s %(levelname)s [%(name)s] %(message)s" if is_debug else "%(asctime)s %(levelname)s %(message)s"
+    )
+    logging.basicConfig(format=log_format, level=verbosity)
+
+    httpx_level = logging.DEBUG if is_debug else logging.WARNING
+    logging.getLogger("httpx").setLevel(httpx_level)
+    logging.getLogger("httpcore").setLevel(httpx_level)
 
 
 def run():
@@ -26,7 +39,11 @@ def run():
         help="Verbosity level of information logged during program execution",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
-    parser.add_argument("--version", help="Show the program version and exit", action="store_true")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {version('pyspamcop')}",
+    )
     parser.add_argument(
         "--config",
         help="The path to the configuration file",
@@ -42,6 +59,5 @@ def run():
     if args.log_level is not None:
         config.verbosity = args.log_level
 
-    logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=config.verbosity)
-
+    log_config(config.verbosity)
     run_account(client=HTTPClient(), config=config)
