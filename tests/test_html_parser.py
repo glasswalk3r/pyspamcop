@@ -148,12 +148,24 @@ def test_find_header(filename, expected):
 def test_find_receivers():
     result = find_receivers(read_fixture("post_reporting.html"))
     assert isinstance(result, list)
-    assert len(result) == 4
+    assert len(result) == 6
     assert result == [
         Receiver(address="google-abuse-bounces-reports", devnull=True),
         Receiver(address="dl_security_whois@navercorp.com", report_id="7151980235"),
         Receiver(address="deliverabilityteam#epsilon.com", devnull=True),
         Receiver(address="johndoe@foobar.net", disabled=True),
+        Receiver(
+            address="abuse-ip@vivacom.bg",
+            report_id="7406240160",
+            devnull=False,
+            disabled=False,
+        ),
+        Receiver(
+            address="abuse@btc-net.bg",
+            report_id="7406240161",
+            devnull=False,
+            disabled=False,
+        ),
     ]
 
 

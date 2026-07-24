@@ -281,13 +281,16 @@ def find_receivers(soup: BeautifulSoup) -> list[Receiver]:
     if content_div is None:
         return receivers
 
-    for node in content_div.find_all(string=True):
+    for node in content_div.children:
+        if not isinstance(node, NavigableString):
+            continue
+
         text = node.get_text(strip=True)
 
         if text == "":
             continue
 
-        tokens = text.split(" ")
+        tokens = text.split()
 
         if text.startswith(devnull):
             address = (tokens[-1].split("@"))[0]
