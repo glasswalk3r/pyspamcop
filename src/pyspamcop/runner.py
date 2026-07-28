@@ -60,7 +60,8 @@ def main_loop(client: ClientBase, email: str, password: str, config: Configurati
         logger.warning(warning.complete_message())
 
     if report_page.header:
-        logger.info("From: %s | Subject: %s", report_page.header.sender, report_page.header.subject)
+        logger.info("From: %s", report_page.header.sender)
+        logger.info("Subject: %s", report_page.header.subject)
 
     if report_page.age:
         logger.info("Message age: %d %s(s)", report_page.age.amount, report_page.age.unit)
