@@ -26,7 +26,13 @@ packages = ["src/pyspamcop"]
 markers = ["integration: tests that requires integration with other services"]
 
 [dependency-groups]
-dev = ["mypy>=1.15.0", "pytest>=8.3.5", "pytest-cov>=7.1.0", "ruff>=0.9.9"]
+dev = [
+    "mypy>=1.15.0",
+    "pytest>=8.3.5",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.9.9",
+    "yamllint>=1.38.0",
+]
 
 [tool.ruff]
 # Same as Black.
