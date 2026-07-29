@@ -155,7 +155,7 @@ erDiagram
 
 # Copyright and license
 
-This software is copyright (c) 2018 of Alceu Rodrigues de Freitas Junior,
+This software is copyright (c) 2026 of Alceu Rodrigues de Freitas Junior,
 <glasswalk3r@yahoo.com.br>
 
 This file is part of pyspamcop.
