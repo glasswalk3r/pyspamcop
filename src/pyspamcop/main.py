@@ -16,7 +16,7 @@ def log_config(verbosity: str):
     log_format = (
         "%(asctime)s %(levelname)s [%(name)s] %(message)s" if is_debug else "%(asctime)s %(levelname)s %(message)s"
     )
-    logging.basicConfig(format=log_format, level=verbosity)
+    logging.basicConfig(format=log_format, datefmt="%H:%M:%S", level=verbosity)
 
     httpx_level = logging.DEBUG if is_debug else logging.WARNING
     logging.getLogger("httpx").setLevel(httpx_level)
