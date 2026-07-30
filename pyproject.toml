@@ -2,8 +2,22 @@
 name = "pyspamcop"
 version = "0.1.0"
 description = "Web crawler for finishing Spamcop.net reports automatically"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 authors = [
     { name = "Alceu Rodrigues de Freitas Junior", email = "glasswalk3r@yahoo.com.br" },
+]
+keywords = ["spamcop", "spam", "abuse-reporting", "crawler", "automation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Communications :: Email",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
 ]
 requires-python = ">=3.12"
 dependencies = [
@@ -11,6 +25,11 @@ dependencies = [
     "httpx>=0.28.1",
     "ruamel-yaml>=0.19.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/glasswalk3r/pyspamcop"
+Repository = "https://github.com/glasswalk3r/pyspamcop"
+Issues = "https://github.com/glasswalk3r/pyspamcop/issues"
 
 [project.scripts]
 pyspamcop = "pyspamcop.main:run"

@@ -62,10 +62,10 @@ coverage:
 	@python -m pytest --cov=pyspamcop tests/
 
 release: dist ## package and upload a release
-	python -m twine upload dist/*
+	uv publish
 
 dist: clean ## builds source and wheel package
-	python -m build
+	uv build
 
 init:
 	uv venv
