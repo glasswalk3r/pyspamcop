@@ -183,8 +183,8 @@ class EmailHeader:
     def __init__(
         self, sender: str, subject: str, mailer: str | None, content_type: str | None, charset: str | None
     ) -> None:
-        if subject is None or subject == "":
-            raise ValueError("The subject parameter must be a non-empty string or a RFC2047 encoded-words")
+        if subject is None:
+            raise ValueError("The subject parameter must be a empty string or a RFC2047 encoded-words")
 
         if sender is None or sender == "":
             raise ValueError("The sender parameter must be a non-empty string or a RFC2047 encoded-words")
