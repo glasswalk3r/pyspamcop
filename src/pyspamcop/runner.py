@@ -47,7 +47,8 @@ def main_loop(client: ClientBase, email: str, password: str, config: Configurati
     logger.info("Sleeping for %s", DELAY)
     sleep(DELAY)
 
-    report_page = parse_report_page(client.spam_report(login_page.next_id))
+    html_page = client.spam_report(login_page.next_id)
+    report_page = parse_report_page(html_page)
 
     for error in report_page.errors:
         logger.error(error.complete_message())
@@ -68,6 +69,7 @@ def main_loop(client: ClientBase, email: str, password: str, config: Configurati
 
     if report_page.form is None:
         logger.error("Could not find the sendreport form for %s.", login_page.next_id)
+        logger.warning("Raw HTML retrieved: %s", html_page)
         return REPORT_ERROR
 
     if config.dry_run:
