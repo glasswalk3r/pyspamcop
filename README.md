@@ -55,11 +55,13 @@ the program.
 The program will look for a configuration file name `.pyspamcop.yaml` in the corresponding home directory of the user
 (that will dependend on the OS you're executing it). Pay attention to the dot ('.') in front of the file.
 
-The configuration file must be written as an YAML file, with the exactproperties below:
+The configuration file must be written as an YAML file, with the exact properties below:
 
 ```YAML
 ---
 execution_options:
+  automatic_confirmation: true
+  dry_run: false
   verbosity: INFO
   database:
     enabled: true
@@ -74,6 +76,10 @@ accounts:
 ```
 All those options have their corresponding command line parameter. Be sure to take care of file permissions to avoid
 disclosure of your SpamCop.net password!
+
+All four `execution_options` keys (`automatic_confirmation`, `dry_run`, `verbosity`, `database`) are required, as are
+`database.enabled` and `database.path`. There are no defaults — if any of them is missing, `pyspamcop` will refuse to
+start and report which key is missing.
 
 ### Local database
 
