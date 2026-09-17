@@ -91,19 +91,18 @@ def read_config(config_file: str) -> Configuration:
         except KeyError as e:
             raise MissingAccountCfgPropertyError(option=str(e), provider=provider) from e
 
-    if (
-        data.get("database", False)
-        and data["database"].get("enabled", False)
-        and data["database"].get("path", "") != ""
-    ):
-        db_path = data["database"]["path"]
+    exec_opts = data.get("execution_options", {})
+    database_cfg = exec_opts.get("database", {}) or {}
+
+    if database_cfg.get("enabled", False) and database_cfg.get("path", "") != "":
+        db_path = database_cfg["path"]
     else:
         db_path = None
 
     config = Configuration(
-        automatic_confirmation=data.get("automatic_configuration", False),
-        dry_run=data.get("dry_run", False),
-        verbosity=data.get("verbosity", "INFO"),
+        automatic_confirmation=exec_opts.get("automatic_confirmation", False),
+        dry_run=exec_opts.get("dry_run", False),
+        verbosity=exec_opts.get("verbosity", "INFO"),
         db_path=db_path,
         accounts=accounts,
     )

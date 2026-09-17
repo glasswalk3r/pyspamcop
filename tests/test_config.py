@@ -27,6 +27,7 @@ def test_read_config(sample_cfg_file):
     cfg = read_config(sample_cfg_file)
     assert isinstance(cfg, Configuration)
     assert len(cfg.accounts) == 2
+    assert cfg.uses_db()
 
 
 def test_read_config_no_accounts(sample_cfg):
@@ -56,3 +57,17 @@ def test_read_config_invalid_directive(sample_cfg):
             read_config(filename)
 
     assert directive in str(exc_info.value)
+
+
+def test_read_config_database_disabled(sample_cfg):
+    data = sample_cfg
+    data["execution_options"]["database"]["enabled"] = False
+
+    with NamedTemporaryFile(delete_on_close=False) as fp:
+        config_dump(data, fp)
+        filename = fp.name
+
+        cfg = read_config(filename)
+
+    assert cfg.db_path is None
+    assert not cfg.uses_db()
