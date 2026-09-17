@@ -53,6 +53,13 @@ class MissingAccountCfgPropertyError(BaseExceptionError):
         super().__init__(f"The option {option} is missing in the '{provider}' provider block")
 
 
+class MissingCfgKeyError(BaseExceptionError):
+    """Exception when a required configuration key is missing."""
+
+    def __init__(self, key: str):
+        super().__init__(f"The '{key}' key is missing from the configuration file")
+
+
 def _validate_directives(data: dict) -> None:
     expected = set(["execution_options", "accounts"])
 
@@ -72,11 +79,17 @@ def read_config(config_file: str) -> Configuration:
         yaml = YAML(typ="safe")
         data = yaml.load(fp)
 
-    _validate_directives(data)
+    try:
+        _validate_directives(data)
+    except KeyError as e:
+        raise MissingCfgKeyError(e.args[0]) from e
 
-    accounts_cfg = data.get("accounts", None)
+    try:
+        accounts_cfg = data["accounts"]
+    except KeyError as e:
+        raise MissingAccountCfgError(config_file) from e
 
-    if accounts_cfg is None or len(accounts_cfg) == 0:
+    if not accounts_cfg:
         raise MissingAccountCfgError(config_file)
 
     accounts = []
@@ -91,20 +104,23 @@ def read_config(config_file: str) -> Configuration:
         except KeyError as e:
             raise MissingAccountCfgPropertyError(option=str(e), provider=provider) from e
 
-    exec_opts = data.get("execution_options", {})
-    database_cfg = exec_opts.get("database", {}) or {}
+    try:
+        exec_opts = data["execution_options"]
+        database_cfg = exec_opts["database"]
 
-    if database_cfg.get("enabled", False) and database_cfg.get("path", "") != "":
-        db_path = database_cfg["path"]
-    else:
-        db_path = None
+        if database_cfg["enabled"] and database_cfg["path"] != "":
+            db_path = database_cfg["path"]
+        else:
+            db_path = None
 
-    config = Configuration(
-        automatic_confirmation=exec_opts.get("automatic_confirmation", False),
-        dry_run=exec_opts.get("dry_run", False),
-        verbosity=exec_opts.get("verbosity", "INFO"),
-        db_path=db_path,
-        accounts=accounts,
-    )
+        config = Configuration(
+            automatic_confirmation=exec_opts["automatic_confirmation"],
+            dry_run=exec_opts["dry_run"],
+            verbosity=exec_opts["verbosity"],
+            db_path=db_path,
+            accounts=accounts,
+        )
+    except KeyError as e:
+        raise MissingCfgKeyError(e.args[0]) from e
 
     return config

@@ -1,6 +1,6 @@
 [project]
 name = "pyspamcop"
-version = "0.1.1"
+version = "0.1.2"
 description = "Web crawler for finishing Spamcop.net reports automatically"
 readme = "README.md"
 license = "GPL-3.0-or-later"
