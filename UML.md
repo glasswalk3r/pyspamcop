@@ -194,10 +194,6 @@ classDiagram
 
 ## Persistence (`db.py`)
 
-`Recorder` persists a `Summary` to SQLite, normalizing repeated string values into small lookup tables. `LookupTable` is
-a plain `(name, column)` pair; the module-level `_LOOKUP_TABLES` tuple of them drives both the schema DDL and the
-runtime column lookup, so it is not tied to a single `Recorder` instance.
-
 ```mermaid
 classDiagram
     class LookupTable {
@@ -216,22 +212,6 @@ classDiagram
 
     Recorder ..> Summary : save()
     Recorder ..> LookupTable : schema/lookups
-```
-
-## Report result (`runner.py`)
-
-`ReportResult` is returned by `main_loop()` and `run_account()`, and consumed by `main.py` to print the outcome of
-processing an account.
-
-
-```mermaid
-classDiagram
-    class ReportResult {
-        <<enumeration>>
-        NO_MORE_SPAM
-        REPORT_ERROR
-        REPORT_SUCCESS
-    }
 ```
 
 ## Exceptions (cross-cutting)
@@ -282,3 +262,57 @@ classDiagram
 Defined in: `UnknownReceiverFormat` — `exception.py`; `MissingAccountCfgError`, `InvalidCfgDirectiveError`,
 `MissingAccountCfgPropertyError`, `MissingCfgKeyError` — `config.py`; `LoginFailedError` — `spamcop/client.py`;
 `InvalidEmailError`, `InvalidPasswordError` — `http/client.py`.
+
+## Sequence diagram — login and check for a reportable SPAM (`runner.main_loop()`)
+
+```mermaid
+sequenceDiagram
+    participant Runner as runner.main_loop()
+    participant Client as ClientBase (HTTPClient)
+    participant HTML as html.py
+    participant Msg as Message subclass
+    participant Header as EmailHeader
+    participant Age as MessageAge
+    participant LP as LoginPage
+    participant RP as ReportPage
+
+    Runner->>Client: login(email, password)
+    Client-->>Runner: html (login response)
+
+    Runner->>HTML: parse_login_page(html)
+    HTML->>HTML: find_errors(soup)
+    HTML->>Msg: new MailHostMessage/SpamHeaderMessage/LoginFailedMessage/...
+    HTML->>HTML: find_next_id(soup)
+    HTML->>LP: new LoginPage(errors, next_id)
+    HTML-->>Runner: LoginPage
+
+    alt LoginFailedMessage in login_page.errors
+        Runner->>Runner: raise LoginFailedError
+    end
+
+    alt login_page.next_id is None
+        Runner-->>Runner: return ReportResult.NO_MORE_SPAM
+    else next_id found
+        Runner->>Client: spam_report(next_id)
+        Client-->>Runner: html (analysis page)
+
+        Runner->>HTML: parse_report_page(html)
+        HTML->>HTML: find_errors(soup) / find_warnings(soup)
+        HTML->>Msg: new MailHostMessage/EmailAddressBounceMessage/.../MailhostForgeryMessage/FreshSpamMessage
+        HTML->>HTML: find_header(soup)
+        HTML->>Header: new EmailHeader(sender, subject, mailer, content_type, charset)
+        HTML->>HTML: find_message_age(soup)
+        HTML->>Age: new MessageAge(amount, unit)
+        HTML->>HTML: find_best_contacts(soup) / report_form(soup)
+        HTML->>RP: new ReportPage(errors, warnings, header, age, contacts, form)
+        HTML-->>Runner: ReportPage
+
+        alt UnrecoverableSpamReportMessage in report_page.errors
+            Runner-->>Runner: return ReportResult.REPORT_ERROR
+        else report_page.form is None
+            Runner-->>Runner: return ReportResult.REPORT_ERROR
+        else report is reportable
+            Note over Runner: proceeds to confirmation (out of this diagram's scope)
+        end
+    end
+```
