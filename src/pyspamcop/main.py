@@ -6,9 +6,15 @@ import os
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from importlib.metadata import version
 
-from pyspamcop.runner import run_account
+from pyspamcop.runner import ReportResult, run_account
 from pyspamcop.config import read_config
 from pyspamcop.http.client import HTTPClient
+
+_RESULT_MESSAGES = {
+    ReportResult.NO_MORE_SPAM: "No more SPAM reports pending.",
+    ReportResult.REPORT_SUCCESS: "Last report processed successfully.",
+    ReportResult.REPORT_ERROR: "Last report processing ended with an error.",
+}
 
 
 def log_config(verbosity: str):
@@ -60,4 +66,5 @@ def run():
         config.verbosity = args.log_level
 
     log_config(config.verbosity)
-    run_account(client=HTTPClient(), config=config)
+    result = run_account(client=HTTPClient(), config=config)
+    print(_RESULT_MESSAGES[result])
