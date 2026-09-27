@@ -1,0 +1,47 @@
+---
+name: Python application
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    paths-ignore:
+      - '*.md'
+      - '*.rst'
+      - Makefile
+      - sample.py
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - '3.12'
+          - '3.13'
+          - '3.14'
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: 'Install uv and set up Python ${{ matrix.python-version }}'
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          python-version: '${{ matrix.python-version }}'
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync
+      - name: Lint with ruff
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          uv run ruff check . --select=E9,F63,F7,F82 --output-format=full
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          uv run ruff check . --exit-zero
+      - name: Test with pytest
+        run: uv run pytest -m 'not integration'
+      - name: Searchs for know vulnerabities
+        uses: pypa/gh-action-pip-audit@v1.1.0
+        with:
+          inputs: .
