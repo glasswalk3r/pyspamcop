@@ -12,6 +12,10 @@ def instance():
 @pytest.mark.integration
 def test_client(instance):
     file_path = os.path.join(os.environ["HOME"], ".pyspamcop.yaml")
+
+    if not os.path.exists(file_path):
+        raise RuntimeError(f"This test expects proper configuration on {file_path} file")
+
     cfg = read_config(file_path)
 
     for account in cfg.accounts:

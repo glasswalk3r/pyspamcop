@@ -21,7 +21,6 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - '3.11'
           - '3.12'
           - '3.13'
           - '3.14'
@@ -33,7 +32,7 @@ jobs:
           python-version: '${{ matrix.python-version }}'
           enable-cache: true
       - name: Install dependencies
-        run: uv sync --extra dev
+        run: uv sync
       - name: Lint with ruff
         run: |
           # stop the build if there are Python syntax errors or undefined names
@@ -41,7 +40,7 @@ jobs:
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           uv run ruff check . --exit-zero
       - name: Test with pytest
-        run: uv run pytest
+        run: uv run pytest -m 'not integration'
       - name: Searchs for know vulnerabities
         uses: pypa/gh-action-pip-audit@v1.1.0
         with:
