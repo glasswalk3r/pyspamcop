@@ -55,11 +55,13 @@ the program.
 The program will look for a configuration file name `.pyspamcop.yaml` in the corresponding home directory of the user
 (that will dependend on the OS you're executing it). Pay attention to the dot ('.') in front of the file.
 
-The configuration file must be written as an YAML file, with the exactproperties below:
+The configuration file must be written as an YAML file, with the exact properties below:
 
 ```YAML
 ---
 execution_options:
+  automatic_confirmation: true
+  dry_run: false
   verbosity: INFO
   database:
     enabled: true
@@ -75,6 +77,10 @@ accounts:
 All those options have their corresponding command line parameter. Be sure to take care of file permissions to avoid
 disclosure of your SpamCop.net password!
 
+All four `execution_options` keys (`automatic_confirmation`, `dry_run`, `verbosity`, `database`) are required, as are
+`database.enabled` and `database.path`. There are no defaults — if any of them is missing, `pyspamcop` will refuse to
+start and report which key is missing.
+
 ### Local database
 
 You probably noticed the following configuration lines from the YAML:
@@ -89,57 +95,6 @@ Those lines define the configuration for a local database based on [SQLite](http
 
 This database will save data related to the submitted reports and can be used to provide further details of what kind
 of SPAM you're getting and from.
-
-## Local database schema
-
-```mermaid
----
-title: Reports sent to Spamcop
----
-erDiagram
-    SUMMARY |o--o{ EMAIL_CHARSET : has
-    SUMMARY ||--|| EMAIL_CONTENT_TYPE : has
-    SUMMARY |o--o{ MAILER : has
-    SUMMARY ||--|| SUMMARY_RECEIVER : has
-    SUMMARY ||--|| SPAM_AGE_UNIT : has
-    SUMMARY_RECEIVER ||--|| RECEIVER : relates-to
-    SUMMARY {
-        integer id PK
-        string tracking_id UK
-        integer created
-        integer charset_id FK
-        integer content_type_id FK
-        integer age
-        integer age_unit_id FK
-        integer mailer_id FK
-    }
-    EMAIL_CHARSET {
-        integer id PK
-        string name
-    }
-    EMAIL_CONTENT_TYPE {
-        integer id PK
-        string name
-    }
-    MAILER {
-        integer id PK
-        string name
-    }
-    SUMMARY_RECEIVER {
-        integer id PK
-        integer summary_id FK
-        integer receiver_id FK
-        string report_id UK
-    }
-    RECEIVER {
-        integer id PK
-        string email UK
-    }
-    SPAM_AGE_UNIT {
-        integer id PK
-        string name UK
-    }
-```
 
 # Copyright and license
 

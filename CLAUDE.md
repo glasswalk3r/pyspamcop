@@ -71,3 +71,9 @@ Default path: `~/.pyspamcop.yaml` (override with `--config`). Schema documented 
 - Unit tests use HTML fixtures in `tests/fixtures/` loaded via `read_fixture()` helper.
 - Integration tests are marked `@pytest.mark.integration` and excluded from `make unit`.
 - Tests run from the project root; fixture paths are relative (`tests/fixtures/...`).
+
+## Style conventions
+
+- Maximum line length is 120 characters. Python code already enforces this via `ruff` (`line-length = 120` in
+  `pyproject.toml`, checked by `make lint`); wrap prose in Markdown/docs files (`README.md`, `UML.md`, etc.) at the
+  same 120-character limit.

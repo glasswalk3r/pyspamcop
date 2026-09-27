@@ -1,6 +1,7 @@
 """Main report-processing loop."""
 
 import logging
+from enum import Enum
 from time import sleep
 
 from pyspamcop.config import Configuration
@@ -15,21 +16,26 @@ from pyspamcop.spamcop.client import ClientBase, LoginFailedError
 
 logger = logging.getLogger(__name__)
 
-NO_MORE_SPAM = -1
-REPORT_ERROR = 0
-REPORT_SUCCESS = 1
+
+class ReportResult(Enum):
+    """Outcome of a single main_loop() report-processing cycle."""
+
+    NO_MORE_SPAM = -1
+    REPORT_ERROR = 0
+    REPORT_SUCCESS = 1
+
 
 DELAY = 5
 
 
-def main_loop(client: ClientBase, email: str, password: str, config: Configuration) -> int:
+def main_loop(client: ClientBase, email: str, password: str, config: Configuration) -> ReportResult:
     """
     Runs one complete login → analyse → (optionally submit) cycle.
 
     Returns:
-        REPORT_SUCCESS (1)  — a report was processed.
-        REPORT_ERROR   (0)  — an error occurred; caller may continue to the next report.
-        NO_MORE_SPAM   (-1) — no pending SPAM found; caller should stop looping.
+        ReportResult.REPORT_SUCCESS — a report was processed.
+        ReportResult.REPORT_ERROR   — an error occurred; caller may continue to the next report.
+        ReportResult.NO_MORE_SPAM   — no pending SPAM found; caller should stop looping.
     """
     logger = logging.getLogger(__name__)
     login_page = parse_login_page(client.login(email, password))
@@ -41,7 +47,7 @@ def main_loop(client: ClientBase, email: str, password: str, config: Configurati
 
     if login_page.next_id is None:
         logger.info("No unreported SPAM found for %s.", email)
-        return NO_MORE_SPAM
+        return ReportResult.NO_MORE_SPAM
 
     logger.info("Found pending SPAM ID: %s", login_page.next_id)
     logger.info("Sleeping for %s", DELAY)
@@ -55,7 +61,7 @@ def main_loop(client: ClientBase, email: str, password: str, config: Configurati
 
     if any(isinstance(e, UnrecoverableSpamReportMessage) for e in report_page.errors):
         logger.warning("Skipping report %s due to unrecoverable error.", login_page.next_id)
-        return REPORT_ERROR
+        return ReportResult.REPORT_ERROR
 
     for warning in report_page.warnings:
         logger.warning(warning.complete_message())
@@ -70,17 +76,17 @@ def main_loop(client: ClientBase, email: str, password: str, config: Configurati
     if report_page.form is None:
         logger.error("Could not find the sendreport form for %s.", login_page.next_id)
         logger.warning("Raw HTML retrieved: %s", html_page)
-        return REPORT_ERROR
+        return ReportResult.REPORT_ERROR
 
     if config.dry_run:
         logger.info("Dry-run mode: skipping submission of report %s.", login_page.next_id)
-        return REPORT_SUCCESS
+        return ReportResult.REPORT_SUCCESS
 
     if not config.automatic_confirmation:
         answer = input(f"Submit SPAM report {login_page.next_id}? [y/N] ").strip().lower()
         if answer != "y":
             logger.info("Report %s cancelled by user.", login_page.next_id)
-            return REPORT_ERROR
+            return ReportResult.REPORT_ERROR
 
     logger.info("Sleeping for %s", DELAY)
     sleep(DELAY)
@@ -109,20 +115,21 @@ def main_loop(client: ClientBase, email: str, password: str, config: Configurati
         recorder.save(summary)
         logger.info("Summary for %s saved to database.", login_page.next_id)
 
-    return REPORT_SUCCESS
+    return ReportResult.REPORT_SUCCESS
 
 
-def run_account(client: ClientBase, config: Configuration) -> None:
+def run_account(client: ClientBase, config: Configuration) -> ReportResult:
     """Run reports for a single account, looping if config.all_reports is set."""
     logger = logging.getLogger(__name__)
+    result = ReportResult.NO_MORE_SPAM
 
     for account in config.accounts:
         logger.info("Processing SPAM sent to %s", account.name)
         while True:
             result = main_loop(client, account.email, account.password, config)
-            if result == NO_MORE_SPAM:
+            if result == ReportResult.NO_MORE_SPAM:
                 break
-            if result == REPORT_ERROR:
+            if result == ReportResult.REPORT_ERROR:
                 logger.warning("Error processing report; moving to next.")
 
     return result
