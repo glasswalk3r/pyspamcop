@@ -7,6 +7,8 @@ from pyspamcop.domain import (
     SpamHeaderMessage,
     LoginFailedMessage,
     ReportsDisabledMessage,
+    TooOldToReportMessage,
+    NoReportingAddressesMessage,
     WarningMessage,
     MailhostForgeryMessage,
     FreshSpamMessage,
@@ -28,6 +30,8 @@ from pyspamcop.domain import (
         (FreshSpamMessage, WarningMessage),
         (LoginFailedMessage, UnrecoverableSpamReportMessage),
         (ReportsDisabledMessage, UnrecoverableSpamReportMessage),
+        (TooOldToReportMessage, UnrecoverableSpamReportMessage),
+        (NoReportingAddressesMessage, UnrecoverableSpamReportMessage),
     ],
 )
 def test_domain_hierarchy(cls, parent):
@@ -101,6 +105,49 @@ def test_fresh_spam_message(messages):
     assert obj.complete_message() == "Yum, this spam is fresh!"
 
 
+# Fragment extracted from tests/fixtures/too_old_to_report.html
+TOO_OLD_MESSAGES = [
+    "Sorry, this email is too old to file a spam report. You must report spam within 2 days of receipt. "
+    "This mail was received on Wed, 11 Nov 2026 13:13:15 +0000"
+]
+
+
+@pytest.mark.parametrize("messages", [TOO_OLD_MESSAGES, _padded(TOO_OLD_MESSAGES)], ids=["fixture", "padded"])
+def test_too_old_to_report_message(messages):
+    obj = TooOldToReportMessage(messages)
+    assert obj.messages == tuple(TOO_OLD_MESSAGES)
+    assert obj.complete_message() == TOO_OLD_MESSAGES[0]
+
+
+@pytest.mark.parametrize(
+    "messages, ip",
+    [
+        # Fragment extracted from tests/fixtures/too_old_to_report.html
+        (["No reporting addresses found for 212.146.209.242, using devnull for tracking."], "212.146.209.242"),
+        (
+            ["  \n\tNo reporting addresses found for 212.146.209.242, using devnull for tracking. \n "],
+            "212.146.209.242",
+        ),
+        (["No reporting addresses found for 5.196.136.237, using devnull for tracking."], "5.196.136.237"),
+        (["No reporting addresses found for 2001:db8::1, using devnull for tracking."], "2001:db8::1"),
+    ],
+    ids=["fixture", "padded", "other-ipv4", "ipv6"],
+)
+def test_no_reporting_addresses_message(messages, ip):
+    obj = NoReportingAddressesMessage(messages)
+    assert obj.messages == (f"No reporting addresses found for {ip}, using devnull for tracking.",)
+    assert obj.ip() == ip
+    assert obj.complete_message() == (
+        f"Cannot report this SPAM message because {ip} has no reporting addresses, moving along"
+    )
+
+
+def test_no_reporting_addresses_message_no_match():
+    obj = NoReportingAddressesMessage(["Invalid"])
+    with pytest.raises(ValueError, match="does not match"):
+        obj.ip()
+
+
 @pytest.mark.parametrize(
     "cls, text, expected",
     [
@@ -114,6 +161,10 @@ def test_fresh_spam_message(messages):
         (LoginFailedMessage, "Something else", False),
         (ReportsDisabledMessage, "Reports disabled for user@example.com", True),
         (ReportsDisabledMessage, "Something else", False),
+        (TooOldToReportMessage, "Sorry, this email is too old to file a spam report.", True),
+        (TooOldToReportMessage, "Something else", False),
+        (NoReportingAddressesMessage, "No reporting addresses found for 10.0.0.1", True),
+        (NoReportingAddressesMessage, "Something else", False),
     ],
 )
 def test_is_related(cls, text, expected):
