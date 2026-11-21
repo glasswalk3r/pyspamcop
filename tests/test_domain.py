@@ -39,19 +39,66 @@ def test_message_init_type_error():
         MailHostMessage("not a list")
 
 
-@pytest.mark.parametrize(
-    "cls, messages, expected_complete",
-    [
-        (MailHostMessage, ["Problem", "ignore", "Correct"], "Problem. Correct"),
-        (SpamHeaderMessage, ["Failed"], "Failed"),
-        (MailhostForgeryMessage, ["Forgery", "Trust"], "Forgery. Trust"),
-        (FreshSpamMessage, ["Yum"], "Yum"),
-    ],
-)
-def test_simple_messages(cls, messages, expected_complete):
-    obj = cls(messages)
-    assert obj.messages == tuple(messages)
-    assert obj.complete_message() == expected_complete
+def _padded(messages):
+    """Same messages surrounded by the kind of whitespace left over from HTML parsing."""
+    return [f"  \n\t{msg} \n " for msg in messages]
+
+
+# Fragments extracted from tests/fixtures/mailhost_problem.html
+MAILHOST_MESSAGES = [
+    "Mailhost configuration problem, identified internal IP as source",
+    "Mailhost:",
+    "Please correct this situation - register every email address where you receive spam",
+]
+
+
+@pytest.mark.parametrize("messages", [MAILHOST_MESSAGES, _padded(MAILHOST_MESSAGES)], ids=["fixture", "padded"])
+def test_mailhost_message(messages):
+    obj = MailHostMessage(messages)
+    assert obj.messages == tuple(MAILHOST_MESSAGES)
+    assert obj.complete_message() == (
+        "Mailhost configuration problem, identified internal IP as source. "
+        "Please correct this situation - register every email address where you receive spam"
+    )
+
+
+# Fragment extracted from tests/fixtures/failed_load_header.html
+SPAM_HEADER_MESSAGES = ["Failed to load spam header: 64446486 / cebd6f7e464abe28f4afffb9d"]
+
+
+@pytest.mark.parametrize("messages", [SPAM_HEADER_MESSAGES, _padded(SPAM_HEADER_MESSAGES)], ids=["fixture", "padded"])
+def test_spam_header_message(messages):
+    obj = SpamHeaderMessage(messages)
+    assert obj.messages == tuple(SPAM_HEADER_MESSAGES)
+    assert obj.complete_message() == "Failed to load spam header: 64446486 / cebd6f7e464abe28f4afffb9d"
+
+
+# Fragments extracted from tests/fixtures/mailhost_problem.html (also in sendreport_form_ok.html)
+FORGERY_MESSAGES = [
+    "Possible forgery. Supposed receiving system not associated with any of your mailhosts",
+    "Will not trust this Received line.",
+]
+
+
+@pytest.mark.parametrize("messages", [FORGERY_MESSAGES, _padded(FORGERY_MESSAGES)], ids=["fixture", "padded"])
+def test_mailhost_forgery_message(messages):
+    obj = MailhostForgeryMessage(messages)
+    assert obj.messages == tuple(FORGERY_MESSAGES)
+    assert obj.complete_message() == (
+        "Possible forgery. Supposed receiving system not associated with any of your mailhosts. "
+        "Will not trust this Received line."
+    )
+
+
+# Fragment extracted from tests/fixtures/sendreport_form_ok.html (also in missing_sendreport_form.html)
+FRESH_SPAM_MESSAGES = ["Yum, this spam is fresh!"]
+
+
+@pytest.mark.parametrize("messages", [FRESH_SPAM_MESSAGES, _padded(FRESH_SPAM_MESSAGES)], ids=["fixture", "padded"])
+def test_fresh_spam_message(messages):
+    obj = FreshSpamMessage(messages)
+    assert obj.messages == tuple(FRESH_SPAM_MESSAGES)
+    assert obj.complete_message() == "Yum, this spam is fresh!"
 
 
 @pytest.mark.parametrize(
