@@ -4,7 +4,13 @@ import pytest
 
 from bs4 import BeautifulSoup
 
-from pyspamcop.domain import MessageAge, Receiver, EmailHeader
+from pyspamcop.domain import (
+    MessageAge,
+    Receiver,
+    EmailHeader,
+    NoReportingAddressesMessage,
+    TooOldToReportMessage,
+)
 from pyspamcop.html import (
     find_errors,
     find_message_age,
@@ -58,6 +64,28 @@ def test_find_errors(filename, messages, formatted):
     assert len(result) == 1
     assert result[0].messages == messages
     assert result[0].complete_message() == formatted
+
+
+def test_find_errors_too_old_to_report():
+    """This page has several errors, and SpamCop repeats the "No reporting addresses" one further down."""
+    no_reporting = "No reporting addresses found for 212.146.209.242, using devnull for tracking."
+    no_reporting_formatted = (
+        "Cannot report this SPAM message because 212.146.209.242 has no reporting addresses, moving along"
+    )
+    too_old = (
+        "Sorry, this email is too old to file a spam report. You must report spam within 2 days of receipt. "
+        "This mail was received on Wed, 11 Nov 2026 13:13:15 +0000"
+    )
+
+    result = find_errors(read_fixture("too_old_to_report.html"))
+    assert isinstance(result, list)
+    assert [type(error) for error in result] == [
+        NoReportingAddressesMessage,
+        TooOldToReportMessage,
+        NoReportingAddressesMessage,
+    ]
+    assert [error.messages for error in result] == [(no_reporting,), (too_old,), (no_reporting,)]
+    assert [error.complete_message() for error in result] == [no_reporting_formatted, too_old, no_reporting_formatted]
 
 
 def test_find_message_age_ok():

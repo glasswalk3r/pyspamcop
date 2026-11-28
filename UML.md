@@ -44,6 +44,15 @@ classDiagram
         +is_related(message: str) bool
         +complete_message() str
     }
+    class TooOldToReportMessage {
+        +is_related(message: str) bool
+        +complete_message() str
+    }
+    class NoReportingAddressesMessage {
+        +ip() str
+        +is_related(message: str) bool
+        +complete_message() str
+    }
     class MailhostForgeryMessage {
         +is_related(message: str) bool
         +complete_message() str
@@ -60,6 +69,8 @@ classDiagram
     UnrecoverableSpamReportMessage <|-- SpamHeaderMessage
     UnrecoverableSpamReportMessage <|-- LoginFailedMessage
     UnrecoverableSpamReportMessage <|-- ReportsDisabledMessage
+    UnrecoverableSpamReportMessage <|-- TooOldToReportMessage
+    UnrecoverableSpamReportMessage <|-- NoReportingAddressesMessage
     WarningMessage <|-- MailhostForgeryMessage
     WarningMessage <|-- FreshSpamMessage
 ```

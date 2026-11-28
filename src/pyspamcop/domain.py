@@ -117,6 +117,39 @@ class ReportsDisabledMessage(UnrecoverableSpamReportMessage):
         return self.messages[0]
 
 
+class TooOldToReportMessage(UnrecoverableSpamReportMessage):
+    """The spam was received too long ago, so SpamCop no longer accepts a report for it."""
+
+    @classmethod
+    def is_related(cls, message: str) -> bool:
+        return message.startswith("Sorry, this email is too old to file a spam report")
+
+    def complete_message(self) -> str:
+        return self.messages[0]
+
+
+NO_REPORTING_ADDRESSES_REGEX: Final[re.Pattern[str]] = re.compile(r"^No\sreporting\saddresses\sfound\sfor\s([^\s,]+)")
+
+
+class NoReportingAddressesMessage(UnrecoverableSpamReportMessage):
+    """SpamCop found no one to receive the report for the spam source IP, so it only goes to devnull for tracking."""
+
+    @classmethod
+    def is_related(cls, message: str) -> bool:
+        return message.startswith("No reporting addresses found for")
+
+    def ip(self) -> str:
+        result = re.match(NO_REPORTING_ADDRESSES_REGEX, self.messages[0])
+
+        if result is not None:
+            return result.group(1)
+
+        raise ValueError(f"{NO_REPORTING_ADDRESSES_REGEX} does not match {self.messages[0]}")
+
+    def complete_message(self) -> str:
+        return f"Cannot report this SPAM message because {self.ip()} has no reporting addresses, moving along"
+
+
 class WarningMessage(Message):
     """Messages that are only warnings, but SPAM report can be completed."""
 

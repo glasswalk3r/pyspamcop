@@ -7,6 +7,8 @@ from pyspamcop.domain import (
     SpamHeaderMessage,
     LoginFailedMessage,
     ReportsDisabledMessage,
+    TooOldToReportMessage,
+    NoReportingAddressesMessage,
     WarningMessage,
     MailhostForgeryMessage,
     FreshSpamMessage,
@@ -28,6 +30,8 @@ from pyspamcop.domain import (
         (FreshSpamMessage, WarningMessage),
         (LoginFailedMessage, UnrecoverableSpamReportMessage),
         (ReportsDisabledMessage, UnrecoverableSpamReportMessage),
+        (TooOldToReportMessage, UnrecoverableSpamReportMessage),
+        (NoReportingAddressesMessage, UnrecoverableSpamReportMessage),
     ],
 )
 def test_domain_hierarchy(cls, parent):
@@ -39,19 +43,109 @@ def test_message_init_type_error():
         MailHostMessage("not a list")
 
 
+def _padded(messages):
+    """Same messages surrounded by the kind of whitespace left over from HTML parsing."""
+    return [f"  \n\t{msg} \n " for msg in messages]
+
+
+# Fragments extracted from tests/fixtures/mailhost_problem.html
+MAILHOST_MESSAGES = [
+    "Mailhost configuration problem, identified internal IP as source",
+    "Mailhost:",
+    "Please correct this situation - register every email address where you receive spam",
+]
+
+
+@pytest.mark.parametrize("messages", [MAILHOST_MESSAGES, _padded(MAILHOST_MESSAGES)], ids=["fixture", "padded"])
+def test_mailhost_message(messages):
+    obj = MailHostMessage(messages)
+    assert obj.messages == tuple(MAILHOST_MESSAGES)
+    assert obj.complete_message() == (
+        "Mailhost configuration problem, identified internal IP as source. "
+        "Please correct this situation - register every email address where you receive spam"
+    )
+
+
+# Fragment extracted from tests/fixtures/failed_load_header.html
+SPAM_HEADER_MESSAGES = ["Failed to load spam header: 64446486 / cebd6f7e464abe28f4afffb9d"]
+
+
+@pytest.mark.parametrize("messages", [SPAM_HEADER_MESSAGES, _padded(SPAM_HEADER_MESSAGES)], ids=["fixture", "padded"])
+def test_spam_header_message(messages):
+    obj = SpamHeaderMessage(messages)
+    assert obj.messages == tuple(SPAM_HEADER_MESSAGES)
+    assert obj.complete_message() == "Failed to load spam header: 64446486 / cebd6f7e464abe28f4afffb9d"
+
+
+# Fragments extracted from tests/fixtures/mailhost_problem.html (also in sendreport_form_ok.html)
+FORGERY_MESSAGES = [
+    "Possible forgery. Supposed receiving system not associated with any of your mailhosts",
+    "Will not trust this Received line.",
+]
+
+
+@pytest.mark.parametrize("messages", [FORGERY_MESSAGES, _padded(FORGERY_MESSAGES)], ids=["fixture", "padded"])
+def test_mailhost_forgery_message(messages):
+    obj = MailhostForgeryMessage(messages)
+    assert obj.messages == tuple(FORGERY_MESSAGES)
+    assert obj.complete_message() == (
+        "Possible forgery. Supposed receiving system not associated with any of your mailhosts. "
+        "Will not trust this Received line."
+    )
+
+
+# Fragment extracted from tests/fixtures/sendreport_form_ok.html (also in missing_sendreport_form.html)
+FRESH_SPAM_MESSAGES = ["Yum, this spam is fresh!"]
+
+
+@pytest.mark.parametrize("messages", [FRESH_SPAM_MESSAGES, _padded(FRESH_SPAM_MESSAGES)], ids=["fixture", "padded"])
+def test_fresh_spam_message(messages):
+    obj = FreshSpamMessage(messages)
+    assert obj.messages == tuple(FRESH_SPAM_MESSAGES)
+    assert obj.complete_message() == "Yum, this spam is fresh!"
+
+
+# Fragment extracted from tests/fixtures/too_old_to_report.html
+TOO_OLD_MESSAGES = [
+    "Sorry, this email is too old to file a spam report. You must report spam within 2 days of receipt. "
+    "This mail was received on Wed, 11 Nov 2026 13:13:15 +0000"
+]
+
+
+@pytest.mark.parametrize("messages", [TOO_OLD_MESSAGES, _padded(TOO_OLD_MESSAGES)], ids=["fixture", "padded"])
+def test_too_old_to_report_message(messages):
+    obj = TooOldToReportMessage(messages)
+    assert obj.messages == tuple(TOO_OLD_MESSAGES)
+    assert obj.complete_message() == TOO_OLD_MESSAGES[0]
+
+
 @pytest.mark.parametrize(
-    "cls, messages, expected_complete",
+    "messages, ip",
     [
-        (MailHostMessage, ["Problem", "ignore", "Correct"], "Problem. Correct"),
-        (SpamHeaderMessage, ["Failed"], "Failed"),
-        (MailhostForgeryMessage, ["Forgery", "Trust"], "Forgery. Trust"),
-        (FreshSpamMessage, ["Yum"], "Yum"),
+        # Fragment extracted from tests/fixtures/too_old_to_report.html
+        (["No reporting addresses found for 212.146.209.242, using devnull for tracking."], "212.146.209.242"),
+        (
+            ["  \n\tNo reporting addresses found for 212.146.209.242, using devnull for tracking. \n "],
+            "212.146.209.242",
+        ),
+        (["No reporting addresses found for 5.196.136.237, using devnull for tracking."], "5.196.136.237"),
+        (["No reporting addresses found for 2001:db8::1, using devnull for tracking."], "2001:db8::1"),
     ],
+    ids=["fixture", "padded", "other-ipv4", "ipv6"],
 )
-def test_simple_messages(cls, messages, expected_complete):
-    obj = cls(messages)
-    assert obj.messages == tuple(messages)
-    assert obj.complete_message() == expected_complete
+def test_no_reporting_addresses_message(messages, ip):
+    obj = NoReportingAddressesMessage(messages)
+    assert obj.messages == (f"No reporting addresses found for {ip}, using devnull for tracking.",)
+    assert obj.ip() == ip
+    assert obj.complete_message() == (
+        f"Cannot report this SPAM message because {ip} has no reporting addresses, moving along"
+    )
+
+
+def test_no_reporting_addresses_message_no_match():
+    obj = NoReportingAddressesMessage(["Invalid"])
+    with pytest.raises(ValueError, match="does not match"):
+        obj.ip()
 
 
 @pytest.mark.parametrize(
@@ -67,6 +161,10 @@ def test_simple_messages(cls, messages, expected_complete):
         (LoginFailedMessage, "Something else", False),
         (ReportsDisabledMessage, "Reports disabled for user@example.com", True),
         (ReportsDisabledMessage, "Something else", False),
+        (TooOldToReportMessage, "Sorry, this email is too old to file a spam report.", True),
+        (TooOldToReportMessage, "Something else", False),
+        (NoReportingAddressesMessage, "No reporting addresses found for 10.0.0.1", True),
+        (NoReportingAddressesMessage, "Something else", False),
     ],
 )
 def test_is_related(cls, text, expected):

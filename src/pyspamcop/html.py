@@ -14,6 +14,8 @@ from pyspamcop.domain import (
     SpamHeaderMessage,
     LoginFailedMessage,
     ReportsDisabledMessage,
+    TooOldToReportMessage,
+    NoReportingAddressesMessage,
     MailhostForgeryMessage,
     FreshSpamMessage,
     MessageAge,
@@ -90,6 +92,8 @@ _FRAGMENT_EXTRACTORS: Final[dict[type[Message], Callable[[Tag], list[str]]]] = {
     SpamHeaderMessage: _own_text,
     LoginFailedMessage: _own_text,
     ReportsDisabledMessage: _own_text,
+    TooOldToReportMessage: _own_text,
+    NoReportingAddressesMessage: _own_text,
     MailhostForgeryMessage: lambda tag: _own_plus_siblings(tag, total=2),
     FreshSpamMessage: _own_text,
 }
@@ -116,7 +120,14 @@ def _errors_in_response(soup: BeautifulSoup) -> list[Message]:
     return _messages_in(
         soup=soup,
         css_class="error",
-        msg_types=[MailHostMessage, SpamHeaderMessage, LoginFailedMessage, ReportsDisabledMessage],
+        msg_types=[
+            MailHostMessage,
+            SpamHeaderMessage,
+            LoginFailedMessage,
+            ReportsDisabledMessage,
+            TooOldToReportMessage,
+            NoReportingAddressesMessage,
+        ],
     )
 
 

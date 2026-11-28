@@ -88,7 +88,7 @@ You probably noticed the following configuration lines from the YAML:
 ```YAML
   database:
     enabled: true
-    path: /var/spamcupng/reports.db
+    path: /var/pyspamcop/reports.db
 ```
 
 Those lines define the configuration for a local database based on [SQLite](https://sqlite.org/).
